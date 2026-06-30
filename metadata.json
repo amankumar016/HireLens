@@ -1,0 +1,6 @@
+{
+  "name": "HireLens",
+  "description": "Context-Aware Talent Reranking Platform leveraging semantic multi-dimensional evaluation and dynamic weight tuning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
