@@ -3,6 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
+import { runLocalIngestionFallback, runLocalRankingHeuristics } from "./src/backend/utils/fallbacks";
 import { INITIAL_CANDIDATES } from "./src/data/candidates";
 
 // Load environment variables
@@ -96,8 +97,10 @@ interface Candidate {
 // Seed Initial Candidates
 let candidates: Candidate[] = JSON.parse(JSON.stringify(INITIAL_CANDIDATES));
 
-// Helper Function: Local Resume Ingestion Parser (Failsafe Fallback)
-function runLocalIngestionFallback(resumeText: string): Candidate {
+
+// Backend utility functions moved to src/backend/utils/fallbacks.ts
+import { runLocalIngestionFallback, runLocalRankingHeuristics } from "./src/backend/utils/fallbacks";
+
   const adjectives = ["Quantum", "Kernel", "Async", "Serverless", "Vector", "Distributed", "Reactive", "Linear", "Consensus", "Idempotent", "Zero-Copy", "Telemetry", "Polymorphic", "Event", "Pipeline", "Cluster", "Memory", "Signal"];
   const nouns = ["Architect", "Crafter", "Weaver", "Maestro", "Refinery", "Forge", "Engine", "Sync", "Mesh", "Node", "Core", "Optimizer", "Shield", "Gateway", "Vault", "Beacon", "Pioneer", "Sentry", "Vanguard"];
   

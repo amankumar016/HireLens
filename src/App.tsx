@@ -41,6 +41,7 @@ import AnimatedScore from "./components/AnimatedScore";
 import KPIDashboardWidgets from "./components/KPIDashboardWidgets";
 import ComparisonVisualizer from "./components/ComparisonVisualizer";
 import { TiltCard, MagneticWrapper, TextCharReveal, CursorSpotlight, Preloader, CustomCursor, ScrollEngine3D, DynamicMetricsAccordion, InteractiveNavLink } from "./components/KineticInteractions";
+import ThemeToggle from "./components/ThemeToggle";
 
 export default function App() {
   // Application State

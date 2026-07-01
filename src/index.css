@@ -126,3 +126,4 @@ input, button, select, textarea {
   animation: float 4s ease-in-out infinite;
 }
 
+.dark body { background-color: var(--color-sand-900); color: var(--color-sand-100); }
