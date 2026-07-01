@@ -30,14 +30,27 @@ async function generateContentWithRetry(options: any, maxRetries = 3, initialDel
     } catch (error: any) {
       attempt++;
       const errorMessage = error?.message || (typeof error === "object" ? JSON.stringify(error) : String(error));
+      
+      // Determine if this is a permanent billing/plan limit error
+      const errLower = errorMessage.toLowerCase();
+      const isPermanentLimit = 
+        errLower.includes("billing") || 
+        errLower.includes("plan") || 
+        errLower.includes("quota") || 
+        errLower.includes("exceeded your current quota") ||
+        errLower.includes("free-tier limit") ||
+        errLower.includes("free tier");
+
       const isRetryable = 
-        errorMessage.includes("503") || 
-        errorMessage.includes("500") || 
-        errorMessage.includes("UNAVAILABLE") || 
-        errorMessage.includes("429") || 
-        errorMessage.includes("RESOURCE_EXHAUSTED") || 
-        errorMessage.includes("demand") ||
-        errorMessage.includes("temporary");
+        !isPermanentLimit && (
+          errorMessage.includes("503") || 
+          errorMessage.includes("500") || 
+          errorMessage.includes("UNAVAILABLE") || 
+          errorMessage.includes("429") || 
+          errorMessage.includes("RESOURCE_EXHAUSTED") || 
+          errorMessage.includes("demand") ||
+          errorMessage.includes("temporary")
+        );
 
       if (isRetryable && attempt < maxRetries) {
         const delay = initialDelay * Math.pow(2, attempt - 1) * (0.8 + Math.random() * 0.4); // exponential backoff with jitter
@@ -370,23 +383,19 @@ app.post("/api/ingest", async (req, res) => {
   }
 
   try {
-    const prompt = `You are Agent 1: Ingestion Engine. Your job is low-latency structural extraction, sanitization of brand identifiers (blind sourcing), taxonomy parsing, and schema generation.
-    Analyze the following resume/candidate bio and output a clean JSON conforming strictly to the requested schema.
-    Ensure Reverse Anonymization (Blind Sourcing) is strictly active:
-    - Replace the candidate's real name/identifiers with a creative and highly technical Display Identifier like "Quantum Sync 24", "Kernel Crafter 99", "Async Weaver 51", etc.
-    - Replace universities with broad surrogates like "Tier-1 Regional Academy", "State Poly-Tech", "Foreign Research Institution", etc.
-    - Replace specific company names with generalized structural equivalents (e.g., "MNC Social Network", "High-Frequency Trading House", "E-commerce Giant", "Bootstrapped SaaS Startup").
-    - Deduce "Ghost Competencies" - deep computer science paradigms and architectural principles that are structurally or mathematically mandatory to complete the projects outlined, even if explicit terms are absent. Give a score and a short, precise justification.
-    - Classify the "Project DNA" fields mapping to the strict Enums.
+    const prompt = `Analyze the following candidate resume or biography. Perform structural extraction, sanitization of brand identifiers (blind sourcing), taxonomy parsing, and schema generation.
 
     CANDIDATE TEXT:
     ${resumeText}`;
 
-    // Agent 1 uses 'gemini-3.5-flash'
+    // Agent 1 uses 'gemini-3.5-flash' with low temperature for high precision extraction
     const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
+        systemInstruction: "You are Agent 1: Ingestion Engine. Your job is low-latency structural extraction, sanitization of brand identifiers (blind sourcing), taxonomy parsing, and schema generation. Ensure Reverse Anonymization (Blind Sourcing) is strictly active: replace the candidate's real name/identifiers with a creative and highly technical Display Identifier like 'Quantum Sync 24', 'Kernel Crafter 99', 'Async Weaver 51', etc.; replace universities with broad surrogates like 'Tier-1 Regional Academy', 'State Poly-Tech', etc.; replace specific company names with generalized equivalents (e.g., 'MNC Social Network', 'High-Frequency Trading House'). Deduce 'Ghost Competencies' - deep computer science paradigms and architectural principles structurally or mathematically mandatory to complete the projects outlined. Classify the 'Project DNA' fields mapping to the strict Enums.",
+        temperature: 0.1,
+        topP: 0.95,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -492,13 +501,7 @@ app.post("/api/rank", async (req, res) => {
     let isFallbackActive = false;
 
     try {
-      const evaluationPrompt = `You are the Coordinator of a Collaborative Consensus Panel of Virtual Specialized Sub-Agents. Your job is deep multi-axis reasoning, cross-verification, conceptual alignment scoring (0-100), and dynamic ranking based on three distinct expert personas:
-
-      1. Virtual Agent A: Chief Systems Architect (Focuses strictly on Tech Stack Compatibility, software complexity, architectural maturity, and the "Ghost Competencies" parsed during ingestion).
-      2. Virtual Agent B: Talent & Behavioral Trajectory Analyst (Focuses strictly on execution velocity, career trajectory, ownership scale, leadership maturity, and project progression).
-      3. Virtual Agent C: Domain Subject Matter Expert (Focuses strictly on industry alignment, business-domain fit, regulatory/technical domain nuance, and practical product-market experience).
-
-      Evaluate how well each of the listed candidates matches the Job Specification across these three specialized dimensions. Let the sub-agents debate and reach a consensus score.
+      const evaluationPrompt = `Evaluate how well each of the listed candidates matches the Job Specification across the three specialized virtual expert dimensions. Let the sub-agents debate and reach a consensus score.
 
       JOB SPECIFICATION:
       ${jobDescription}
@@ -513,49 +516,79 @@ app.post("/api/rank", async (req, res) => {
         Ghost Competencies: ${JSON.stringify(c.ghost_competencies)}
       `).join("\n\n")}
 
-      OUTPUT REQUISITES:
-      Evaluate and return consensus scores from 0 to 100 for each candidate across the three agent dimensions.
-      Provide precise structural justifications drafted by the respective virtual agent for their rating. Output strict JSON format with an array of evaluations, one for each candidate ID listed above.`;
+      Evaluate and return consensus scores from 0 to 100 for each candidate across the three agent dimensions (technical, behavioral, domain).
+      Provide precise structural justifications drafted by the respective virtual agent for their rating.`;
 
-      const response = await generateContentWithRetry({
-        model: "gemini-3.5-flash", // Fast & fully accurate for this task, avoiding paid model flow requirements
-        contents: evaluationPrompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              evaluations: {
-                type: Type.ARRAY,
-                description: "Array of evaluations matching each input candidate ID exactly",
-                items: {
+      let responseText = "";
+      let usedModel = "gemini-3.1-pro-preview";
+
+      const systemInstructionText = "You are the Coordinator of a Collaborative Consensus Panel of Virtual Specialized Sub-Agents. Your job is deep multi-axis reasoning, cross-verification, conceptual alignment scoring (0-100), and dynamic ranking based on three distinct expert personas:\n\n1. Virtual Agent A: Chief Systems Architect (Focuses strictly on Tech Stack Compatibility, software complexity, architectural maturity, and the 'Ghost Competencies' parsed during ingestion).\n2. Virtual Agent B: Talent & Behavioral Trajectory Analyst (Focuses strictly on execution velocity, career trajectory, ownership scale, leadership maturity, and project progression).\n3. Virtual Agent C: Domain Subject Matter Expert (Focuses strictly on industry alignment, business-domain fit, regulatory/technical domain nuance, and practical product-market experience).\n\nRate candidate fit objectively using detailed consensus math. Provide constructive, precise justifications for all sub-scores, and keep your overall evaluations highly logical, strict, and precise. Return a JSON object with an evaluations array, one element for each candidate ID evaluated.";
+
+      const responseSchemaConfig = {
+        type: Type.OBJECT,
+        properties: {
+          evaluations: {
+            type: Type.ARRAY,
+            description: "Array of evaluations matching each input candidate ID exactly",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING, description: "The exact candidate ID evaluated" },
+                technical_match_score: { type: Type.INTEGER },
+                behavioral_trajectory_score: { type: Type.INTEGER },
+                domain_alignment_score: { type: Type.INTEGER },
+                reasoning: {
                   type: Type.OBJECT,
                   properties: {
-                    id: { type: Type.STRING, description: "The exact candidate ID evaluated" },
-                    technical_match_score: { type: Type.INTEGER },
-                    behavioral_trajectory_score: { type: Type.INTEGER },
-                    domain_alignment_score: { type: Type.INTEGER },
-                    reasoning: {
-                      type: Type.OBJECT,
-                      properties: {
-                        technical: { type: Type.STRING },
-                        behavioral: { type: Type.STRING },
-                        domain: { type: Type.STRING },
-                        overall_summary: { type: Type.STRING },
-                      },
-                      required: ["technical", "behavioral", "domain", "overall_summary"],
-                    },
+                    technical: { type: Type.STRING },
+                    behavioral: { type: Type.STRING },
+                    domain: { type: Type.STRING },
+                    overall_summary: { type: Type.STRING },
                   },
-                  required: ["id", "technical_match_score", "behavioral_trajectory_score", "domain_alignment_score", "reasoning"],
+                  required: ["technical", "behavioral", "domain", "overall_summary"],
                 },
               },
+              required: ["id", "technical_match_score", "behavioral_trajectory_score", "domain_alignment_score", "reasoning"],
             },
-            required: ["evaluations"],
           },
         },
-      });
+        required: ["evaluations"],
+      };
 
-      const parsedRes = JSON.parse(response.text || "{}");
+      try {
+        console.log("[Ranking] Attempting precision evaluation with primary model: gemini-3.1-pro-preview...");
+        const response = await generateContentWithRetry({
+          model: "gemini-3.1-pro-preview",
+          contents: evaluationPrompt,
+          config: {
+            systemInstruction: systemInstructionText,
+            temperature: 0.1,
+            topP: 0.95,
+            responseMimeType: "application/json",
+            responseSchema: responseSchemaConfig,
+          },
+        });
+        responseText = response.text || "{}";
+        console.log("[Ranking] Evaluation completed using gemini-3.1-pro-preview successfully.");
+      } catch (proErr: any) {
+        console.warn("[Ranking] Primary model (gemini-3.1-pro-preview) failed or unavailable. Falling back to gemini-3.5-flash. Details:", proErr?.message || proErr);
+        usedModel = "gemini-3.5-flash";
+        const response = await generateContentWithRetry({
+          model: "gemini-3.5-flash",
+          contents: evaluationPrompt,
+          config: {
+            systemInstruction: systemInstructionText,
+            temperature: 0.1,
+            topP: 0.95,
+            responseMimeType: "application/json",
+            responseSchema: responseSchemaConfig,
+          },
+        });
+        responseText = response.text || "{}";
+        console.log("[Ranking] Evaluation completed using gemini-3.5-flash fallback successfully.");
+      }
+
+      const parsedRes = JSON.parse(responseText);
       evaluationsList = parsedRes.evaluations || [];
     } catch (apiErr: any) {
       const isQuota = apiErr?.message?.includes("quota") || apiErr?.message?.includes("RESOURCE_EXHAUSTED") || JSON.stringify(apiErr).includes("429");

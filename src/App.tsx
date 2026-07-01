@@ -31,7 +31,10 @@ import {
   Cpu,
   Activity,
   Maximize2,
-  Minimize2
+  Minimize2,
+  UploadCloud,
+  BarChart3,
+  ArrowRight
 } from "lucide-react";
 import { Candidate, Weights } from "./types";
 import DNAClusterView from "./components/DNAClusterView";
@@ -59,6 +62,7 @@ export default function App() {
   }, [candidates, ghostMode]);
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<'landing' | 'ingestion' | 'ranking' | 'analytics'>('landing');
   const [weights, setWeights] = useState<Weights>({
     techStack: 0.4,
     trajectory: 0.3,
@@ -653,8 +657,8 @@ export default function App() {
       </AnimatePresence>
 
       {/* Top Navigation Bar - Styled like clean Editions Bar */}
-      <nav id="navbar-main" className="border-b border-[#E5E2D9] px-6 py-4 flex flex-col sm:flex-row justify-between items-center bg-[#F4F3F7]/80 backdrop-blur sticky top-0 z-40 gap-4">
-        <div className="flex items-center gap-3">
+      <nav id="navbar-main" className="border-b border-[#E5E2D9] px-6 lg:px-10 py-4 lg:py-3.5 flex flex-col sm:flex-row justify-between items-center bg-[#F4F3F7]/80 backdrop-blur sticky top-0 z-40 gap-4">
+        <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setCurrentPage("landing")}>
           <div className="w-9 h-9 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/20">
             <div className="w-4 h-4 border-2 border-[#EDE8F5] rounded-md rotate-45" />
           </div>
@@ -670,16 +674,48 @@ export default function App() {
           </div>
         </div>
 
-        {/* Navigation Center Links */}
-        <div className="hidden lg:flex items-center gap-6 text-xs font-medium text-[#8697C4]">
-          <InteractiveNavLink href="#bento-weights">Calibration Matrix</InteractiveNavLink>
-          <InteractiveNavLink href="#bento-jobspec">Job Spec Context</InteractiveNavLink>
-          <InteractiveNavLink href="#dna-cluster-root">DNA Signatures</InteractiveNavLink>
-          <InteractiveNavLink href="#leaderboard-table">Ranked Talents</InteractiveNavLink>
-          <span className="text-stone-300">|</span>
-          <span className="text-[10px] bg-[#3D52A0]/5 text-[#3D52A0] border border-[#3D52A0]/10 px-2 py-0.5 rounded font-mono font-bold">
-            FOUNDATIONS RELEASE ACTIVE
-          </span>
+        {/* Navigation Center Links - Multi-page router */}
+        <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-[#8697C4]">
+          <button
+            onClick={() => setCurrentPage("landing")}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
+              currentPage === "landing"
+                ? "bg-[#3D52A0] text-white shadow-xs"
+                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
+            }`}
+          >
+            Portal Home
+          </button>
+          <button
+            onClick={() => setCurrentPage("ingestion")}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
+              currentPage === "ingestion"
+                ? "bg-[#3D52A0] text-white shadow-xs"
+                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
+            }`}
+          >
+            1. Resume Ingestion
+          </button>
+          <button
+            onClick={() => setCurrentPage("ranking")}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
+              currentPage === "ranking"
+                ? "bg-[#3D52A0] text-white shadow-xs"
+                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
+            }`}
+          >
+            2. Calibration & Alignment
+          </button>
+          <button
+            onClick={() => setCurrentPage("analytics")}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
+              currentPage === "analytics"
+                ? "bg-[#3D52A0] text-white shadow-xs"
+                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
+            }`}
+          >
+            3. Talent Analytics
+          </button>
         </div>
 
         {/* Global Controls */}
@@ -703,13 +739,14 @@ export default function App() {
       </nav>
 
       {/* Immersive Landing Header */}
-      <header className="relative w-full overflow-hidden bg-gradient-to-b from-[#EBF7F9]/40 via-[#F4F3F7] to-[#F4F3F7] border-b border-[#E5E2D9] pb-16 pt-8">
+      {currentPage === "landing" && (
+        <header className="relative w-full overflow-hidden bg-gradient-to-b from-[#EBF7F9]/40 via-[#F4F3F7] to-[#F4F3F7] border-b border-[#E5E2D9] pb-16 pt-8">
         <ScrollEngine3D />
         {/* Subtle decorative background lights */}
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#0FA4AF]/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[400px] h-[400px] bg-[#D0E4E7]/20 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
           {/* Top Info Tag */}
           <div className="flex items-center gap-2 mb-6 animate-slide-in">
             <span className="text-[10px] uppercase font-mono tracking-widest text-[#0FA4AF] font-bold">
@@ -1170,12 +1207,13 @@ export default function App() {
 
         </div>
       </header>
+      )}
 
       {/* Anchor point to scroll down to */}
       <div id="dashboard-section" className="h-2" />
 
       {fallbackActive && (
-        <div id="failsafe-banner" className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs max-w-7xl lg:mx-auto w-[calc(100%-3rem)] md:w-full">
+        <div id="failsafe-banner" className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs max-w-[1440px] lg:mx-auto w-[calc(100%-3rem)] md:w-full">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-amber-100 rounded-lg text-amber-700 mt-0.5 flex-shrink-0">
               <AlertTriangle className="w-4 h-4" />
@@ -1193,39 +1231,187 @@ export default function App() {
         </div>
       )}
 
-      {/* Dashboard Main Bento Area */}
-      <main className="flex-grow p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Animated & Interactive KPI Dashboard Widgets */}
-        <div className="lg:col-span-12">
-          <KPIDashboardWidgets
-            candidates={processedCandidates}
-            loading={loadingCandidates || rankingInProgress}
-            onFilterStrongFits={setStrongFitsFiltered}
-            isStrongFitsFiltered={strongFitsFiltered}
-            onSelectCandidateId={setSelectedCandidateId}
-            selectedCandidateId={selectedCandidateId}
-            onClearSearch={() => {
-              setSearchQuery("");
-              setStrongFitsFiltered(false);
-            }}
-          />
-        </div>
+      {/* Interactive Module Portal Directory for Landing Page */}
+      {currentPage === "landing" && (
+        <section id="module-portal" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-12 w-full animate-fade-in">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#024950] bg-[#024950]/5 px-3 py-1 rounded-full font-bold">
+              SYSTEM GATEWAY
+            </span>
+            <h2 className="font-display font-extrabold text-3xl text-[#1B244A] tracking-tight mt-3">
+              Module-Level Operations Dashboard
+            </h2>
+            <p className="text-stone-500 text-xs mt-2 leading-relaxed">
+              Unlock different capabilities of the multi-agent calibration platform. Select an active workspace module to initiate operations.
+            </p>
+          </div>
 
-        {/* Interactive Bubble Chart Map */}
-        <div className="lg:col-span-12 animate-slide-in">
-          <InteractiveTalentChart
-            candidates={processedCandidates}
-            selectedCandidateId={selectedCandidateId}
-            onSelectCandidate={(id) => setSelectedCandidateId(id)}
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* CARD 1: INGESTION LAB */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("ingestion");
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100 group-hover:bg-teal-600 group-hover:text-white group-hover:border-teal-500 transition-all">
+                  <UploadCloud className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Resume Ingestion Lab
+                    </h3>
+                    <span className="text-[9px] bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Parser Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Import resumes via automated drag-and-drop. Processes PDF files with local deterministic parsing fallback.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  {processedCandidates.length} profiles loaded
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+
+            {/* CARD 2: WEIGHT CALIBRATION */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("ranking");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-500 transition-all">
+                  <Sliders className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Weight Calibration
+                    </h3>
+                    <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Reranker Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Fine-tune importance ratios for Technical, Behavioral, and Domain matches. Calibrate & score candidates instantly.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  3 dynamic metrics
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+
+            {/* CARD 3: TALENT ANALYTICS */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("analytics");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Talent Analytics
+                    </h3>
+                    <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Diagnostic Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Access high-fidelity charts, alignment distributions, and comparison matrices. Export reports directly to PDF.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  Interactive radar, metrics & bubble maps
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Dashboard Main Bento Area */}
+      {currentPage !== "landing" && (
+        <main className="flex-grow p-6 lg:p-10 max-w-[1440px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Animated & Interactive KPI Dashboard Widgets */}
+          {currentPage === "analytics" && (
+            <div className="lg:col-span-12">
+              <KPIDashboardWidgets
+                candidates={processedCandidates}
+                loading={loadingCandidates || rankingInProgress}
+                onFilterStrongFits={setStrongFitsFiltered}
+                isStrongFitsFiltered={strongFitsFiltered}
+                onSelectCandidateId={setSelectedCandidateId}
+                selectedCandidateId={selectedCandidateId}
+                onClearSearch={() => {
+                  setSearchQuery("");
+                  setStrongFitsFiltered(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Interactive Bubble Chart Map */}
+          {currentPage === "analytics" && (
+            <div className="lg:col-span-12 animate-slide-in">
+              <InteractiveTalentChart
+                candidates={processedCandidates}
+                selectedCandidateId={selectedCandidateId}
+                onSelectCandidate={(id) => setSelectedCandidateId(id)}
+              />
+            </div>
+          )}
 
         {/* LEFT COLUMN (Width: 5/12) — Ingestion, Job Spec, Weight sliders */}
-        <section className="lg:col-span-5 space-y-5 flex flex-col">
+        {currentPage !== "analytics" && (
+          <section className="lg:col-span-5 space-y-5 flex flex-col">
           
           {/* BENTO CARD 1: Weight Calibration sliders */}
-          <div id="bento-weights" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative overflow-hidden">
+          {currentPage === "ranking" && (
+            <>
+              <div id="bento-weights" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-[#024950]/5 rounded-full blur-2xl pointer-events-none" />
             
             <div className="mb-4">
@@ -1413,22 +1599,28 @@ export default function App() {
               </div>
             )}
           </div>
+        </>
+      )}
 
           {/* BENTO CARD 3: Ingestion Lab Form */}
-          <div id="bento-ingest" className="flex-grow">
-            <CandidateIngestionForm onIngestSuccess={handleNewCandidateIngested} />
-          </div>
+          {currentPage === "ingestion" && (
+            <div id="bento-ingest" className="flex-grow">
+              <CandidateIngestionForm onIngestSuccess={handleNewCandidateIngested} />
+            </div>
+          )}
 
         </section>
+      )}
 
-        {/* RIGHT COLUMN (Width: 7/12) — Leaderboard and Detailed selected card */}
-        <section className="lg:col-span-7 space-y-5 flex flex-col">
+        {/* RIGHT COLUMN — Leaderboard and Detailed selected card */}
+        <section className={`${currentPage === "analytics" ? "lg:col-span-12" : "lg:col-span-7"} space-y-5 flex flex-col`}>
           
           {/* BENTO CARD 4: Live Leaderboard standings */}
-          <div 
-            id="bento-leaderboard" 
-            className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative"
-          >
+          {currentPage === "ranking" && (
+            <div 
+              id="bento-leaderboard" 
+              className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative"
+            >
             <div className="w-full flex flex-col h-full justify-between">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
                 <div>
@@ -2165,9 +2357,54 @@ export default function App() {
             )}
             </div>
           </div>
+          )}
+
+          {currentPage === "ingestion" && (
+            <div className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-stone-400">Sandbox Database</span>
+                  <h3 className="font-display font-extrabold text-[#1B244A] text-base mt-0.5">Ingested Profiles Pool</h3>
+                </div>
+                <span className="text-xs px-2.5 py-1 bg-[#3D52A0]/10 text-[#3D52A0] rounded-xl font-mono font-bold">
+                  {processedCandidates.length} Active Profiles
+                </span>
+              </div>
+              
+              <div className="divide-y divide-stone-100 overflow-y-auto max-h-[500px]">
+                {processedCandidates.length === 0 ? (
+                  <div className="py-16 text-center text-stone-400 text-xs italic">
+                    No candidate profiles in the database. Use the drag-and-drop ingestion lab to add resumes!
+                  </div>
+                ) : (
+                  processedCandidates.map((cand, idx) => (
+                    <div key={cand.id} className="py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-stone-50/50 p-2 rounded-xl transition-all">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display font-bold text-sm text-[#1B244A]">{cand.anonymized_profile.display_identifier}</h4>
+                          <span className="text-[8px] bg-stone-100 text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded font-mono">
+                            Index {idx + 1}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 mt-1 leading-relaxed line-clamp-2 max-w-md">{cand.anonymized_profile.summary}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cand.ghost_competencies?.slice(0, 2).map((gc: any, gidx: number) => (
+                          <span key={gidx} className="text-[9px] bg-[#024950]/5 text-[#024950] border border-[#024950]/10 px-2 py-0.5 rounded font-mono font-bold">
+                            {gc.concept}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {/* BENTO CARD 5: Selected Candidate Deep-Dive Verification Matrix */}
-          <div id="bento-deepdive" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex-grow">
+          {currentPage !== "ingestion" && (
+            <div id="bento-deepdive" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex-grow">
             {compareCandidateIds.length >= 2 ? (
               (() => {
                 const compCandidates = compareCandidateIds
@@ -2550,6 +2787,7 @@ export default function App() {
               )
             )}
           </div>
+          )}
 
         </section>
 
@@ -2570,10 +2808,11 @@ export default function App() {
         </div>
 
       </main>
+      )}
 
       {/* Footer System Architecture Info */}
       <footer className="border-t border-[#E5E2D9] py-8 px-6 bg-stone-50 text-center text-xs text-stone-500 font-mono mt-10" id="app-footer">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-6">
+        <div className="max-w-[1440px] mx-auto flex flex-col lg:flex-row justify-between items-center gap-6 px-6 lg:px-10">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 bg-[#3D52A0] rounded-full" />
             <span>Operational System Topology: Node 'HireLens' Online</span>
