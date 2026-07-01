@@ -88,8 +88,6 @@ export default function App() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
   const [bulkStep, setBulkStep] = useState("");
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [showIngestionSidebar, setShowIngestionSidebar] = useState(false);
 
   const toggleBulkSelect = (id: string) => {
     setBulkSelectedIds((prev) =>
@@ -221,27 +219,6 @@ export default function App() {
   useEffect(() => {
     fetchCandidates();
   }, []);
-
-  // Exit fullscreen on Escape key and lock body scroll
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsFullScreen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    
-    if (isFullScreen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isFullScreen]);
 
   const fetchCandidates = async () => {
     setLoadingCandidates(true);
@@ -1450,26 +1427,17 @@ export default function App() {
           {/* BENTO CARD 4: Live Leaderboard standings */}
           <div 
             id="bento-leaderboard" 
-            className={`transition-all duration-300 relative ${
-              isFullScreen
-                ? "fixed inset-0 z-50 bg-[#FDFCF8] p-6 md:p-8 flex flex-col md:flex-row gap-6 overflow-hidden"
-                : "p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between"
-            }`}
+            className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative"
           >
-            <div className={isFullScreen ? (showIngestionSidebar ? "flex-grow flex flex-col gap-4 overflow-hidden h-full w-full md:w-[65%] lg:w-[70%]" : "flex-grow flex flex-col gap-4 overflow-hidden h-full w-full") : "w-full flex flex-col h-full justify-between"}>
+            <div className="w-full flex flex-col h-full justify-between">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
                       Evaluation Scoreboard
                     </div>
-                    {isFullScreen && (
-                      <span className="bg-[#3D52A0]/10 text-[#3D52A0] text-[9px] px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wide animate-pulse">
-                        IMMEDIATE DIAGNOSTIC VIEW ACTIVE
-                      </span>
-                    )}
                   </div>
-                  <h2 className={`font-display font-bold text-[#2D2926] ${isFullScreen ? "text-2xl" : "text-base"}`}>
+                  <h2 className="font-display font-bold text-[#2D2926] text-base">
                     Talent Leaderboard Alignment Standings
                   </h2>
                 </div>
@@ -1520,41 +1488,6 @@ export default function App() {
                     <Download className="w-3.5 h-3.5" />
                     <span>Export CSV</span>
                   </button>
-
-                  {isFullScreen && (
-                    <button
-                      id="toggle-ingestion-sidebar-btn"
-                      onClick={() => setShowIngestionSidebar(!showIngestionSidebar)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border active:scale-95 transition-all shadow-xs cursor-pointer ${
-                        showIngestionSidebar
-                          ? "bg-teal-700 text-white border-teal-600 hover:bg-teal-800"
-                          : "text-teal-800 bg-teal-50 hover:bg-teal-100 border-teal-200"
-                      }`}
-                      title="Toggle Ingestion Lab Sidebar"
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>{showIngestionSidebar ? "Hide Ingestion Lab" : "Open Ingestion Lab"}</span>
-                    </button>
-                  )}
-
-                  <button
-                    id="fullscreen-mode-btn"
-                    onClick={() => setIsFullScreen(!isFullScreen)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border active:scale-95 transition-all shadow-xs cursor-pointer ${
-                      isFullScreen
-                        ? "bg-rose-600 text-white border-rose-500 hover:bg-rose-700"
-                        : "text-stone-600 bg-stone-50 hover:bg-stone-100 border-stone-200"
-                    }`}
-                    title="Toggle Full Screen Mode"
-                  >
-                    {isFullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                    <span>{isFullScreen ? "Exit Full Screen" : "Full Screen"}</span>
-                  </button>
-                  {isFullScreen && (
-                    <span className="text-[10px] text-stone-400 font-mono hidden md:inline bg-stone-100 px-2 py-1 rounded border border-stone-200">
-                      Press <kbd className="font-bold">Esc</kbd>
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -1686,7 +1619,7 @@ export default function App() {
             ) : (
               <>
                 {/* Mobile Breakpoint Card-Based View */}
-                <div className={`block md:hidden space-y-3 ${isFullScreen ? "overflow-y-auto max-h-[60vh] pb-4" : ""}`}>
+                <div className="block md:hidden space-y-3">
                   {filteredCandidates.length === 0 ? (
                     <div className="py-12 text-center text-xs text-stone-400 font-sans italic bg-[#FDFCF8]/50 border border-stone-100 rounded-2xl">
                       No candidates match current filter.
@@ -1884,11 +1817,9 @@ export default function App() {
                 </div>
 
                 {/* Desktop & Tablet Table with Horizontal Scrolling wrapper */}
-                <div className={`hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm transition-all duration-300 ${
-                  isFullScreen ? "flex-1 min-h-0" : "max-h-[62vh]"
-                }`}>
+                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm max-h-[62vh]">
                   <table className="w-full text-left border-collapse table-auto bg-white rounded-xl overflow-hidden border border-stone-150/60">
-                    <thead className={isFullScreen ? "sticky top-0 z-10 bg-stone-50 shadow-xs" : "bg-stone-50/80"}>
+                    <thead className="bg-stone-50/80">
                       <tr className="text-stone-500 text-[10px] font-mono uppercase tracking-wider border-b border-[#E5E2D9]">
                         {bulkProcessMode && (
                           <th className="py-3 px-4 text-center w-14 select-none">Select</th>
@@ -2233,31 +2164,6 @@ export default function App() {
               </>
             )}
             </div>
-
-            {/* Right Portion of Fullscreen: Collapsible Ingestion Lab */}
-            {isFullScreen && showIngestionSidebar && (
-              <div className="w-full md:w-[35%] lg:w-[350px] flex-shrink-0 flex flex-col h-full overflow-hidden bg-white border border-[#E5E2D9] rounded-3xl p-5 shadow-lg animate-fade-in">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-[#024950] font-bold">
-                      Ingested Resumes Feed
-                    </div>
-                    <h3 className="text-sm font-display font-bold text-[#003135]">
-                      The Ingestion Lab (Stage 1)
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowIngestionSidebar(false)}
-                    className="p-1 hover:bg-stone-100 rounded-lg text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex-grow overflow-y-auto pr-1">
-                  <CandidateIngestionForm onIngestSuccess={handleNewCandidateIngested} />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* BENTO CARD 5: Selected Candidate Deep-Dive Verification Matrix */}

@@ -22,9 +22,48 @@ const TEMPLATE_RESUMES = [
   }
 ];
 
+const loadPdfJS = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).pdfjsLib) {
+      resolve((window as any).pdfjsLib);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js";
+    script.onload = () => {
+      const pdfjsLib = (window as any).pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+      resolve(pdfjsLib);
+    };
+    script.onerror = () => {
+      reject(new Error("Failed to load PDF parsing library. Check your network."));
+    };
+    document.head.appendChild(script);
+  });
+};
+
+const extractTextFromPdf = async (file: File): Promise<string> => {
+  const pdfjsLib = await loadPdfJS();
+  const arrayBuffer = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const pdf = await loadingTask.promise;
+  let fullText = "";
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => item.str)
+      .join(" ");
+    fullText += pageText + "\n";
+  }
+  return fullText;
+};
+
 export default function CandidateIngestionForm({ onIngestSuccess }: CandidateIngestionFormProps) {
   const [resumeText, setResumeText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [parsingFile, setParsingFile] = useState(false);
   const [stageIndex, setStageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,31 +104,54 @@ export default function CandidateIngestionForm({ onIngestSuccess }: CandidateIng
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file) return;
 
     const fileExtension = file.name.split(".").pop()?.toLowerCase();
-    const isSupported = fileExtension === "txt" || fileExtension === "md" || fileExtension === "json";
+    const isSupported = fileExtension === "txt" || fileExtension === "md" || fileExtension === "json" || fileExtension === "pdf";
 
     if (!isSupported) {
-      setError("Please upload a plain text (.txt), Markdown (.md), or JSON (.json) resume file.");
+      setError("Please upload a plain text (.txt), Markdown (.md), JSON (.json), or PDF (.pdf) resume file.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (text) {
+    setParsingFile(true);
+    setError(null);
+
+    try {
+      if (fileExtension === "pdf") {
+        const text = await extractTextFromPdf(file);
+        if (!text.trim()) {
+          throw new Error("No readable text found in PDF. Make sure it is not scanned or empty.");
+        }
         setResumeText(text);
         const sizeKB = (file.size / 1024).toFixed(1);
         setUploadedFile({ name: file.name, size: `${sizeKB} KB` });
-        setError(null);
+      } else {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const result = e.target?.result as string;
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error("Empty file content."));
+            }
+          };
+          reader.onerror = () => reject(new Error("Error reading file."));
+          reader.readAsText(file);
+        });
+        setResumeText(text);
+        const sizeKB = (file.size / 1024).toFixed(1);
+        setUploadedFile({ name: file.name, size: `${sizeKB} KB` });
       }
-    };
-    reader.onerror = () => {
-      setError("Error reading file.");
-    };
-    reader.readAsText(file);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Error reading or parsing file.");
+      setUploadedFile(null);
+    } finally {
+      setParsingFile(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -199,6 +261,8 @@ export default function CandidateIngestionForm({ onIngestSuccess }: CandidateIng
           className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-200 ${
             dragActive
               ? "border-[#024950] bg-[#024950]/5 scale-[0.99]"
+              : parsingFile
+              ? "border-[#3D52A0] bg-[#3D52A0]/5"
               : uploadedFile
               ? "border-emerald-200 bg-emerald-50/10"
               : "border-sand-200 hover:border-sand-300 bg-sand-50/30 hover:bg-sand-50/50"
@@ -208,11 +272,23 @@ export default function CandidateIngestionForm({ onIngestSuccess }: CandidateIng
             ref={fileInputRef}
             type="file"
             onChange={handleFileChange}
-            accept=".txt,.md,.json"
+            accept=".txt,.md,.json,.pdf"
             className="hidden"
           />
 
-          {uploadedFile ? (
+          {parsingFile ? (
+            <div className="flex flex-col items-center justify-center py-2" onClick={(e) => e.stopPropagation()}>
+              <div className="p-2.5 bg-[#3D52A0]/10 rounded-xl text-[#3D52A0] mb-2 animate-spin">
+                <RefreshCw className="w-4 h-4" />
+              </div>
+              <p className="text-xs font-semibold text-[#3D52A0] animate-pulse">
+                Extracting text content from file...
+              </p>
+              <p className="text-[10px] text-sand-400 mt-1">
+                Using client-side high-fidelity extractor
+              </p>
+            </div>
+          ) : uploadedFile ? (
             <div className="flex items-center justify-between bg-white border border-emerald-100 p-2.5 rounded-lg shadow-2xs max-w-md mx-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-2 text-left">
                 <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
@@ -255,7 +331,7 @@ export default function CandidateIngestionForm({ onIngestSuccess }: CandidateIng
                 Drag and drop your resume file here, or <span className="text-[#024950] hover:underline">browse</span>
               </p>
               <p className="text-[10px] text-sand-400 mt-1">
-                Supports .txt, .md, .json (Plain Text formats)
+                Supports .txt, .md, .json, and .pdf (Automatic Text Extraction)
               </p>
             </div>
           )}
