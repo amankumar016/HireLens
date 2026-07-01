@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -24,7 +24,14 @@ import {
   ShieldCheck,
   RotateCcw,
   Download,
-  Heart
+  Heart,
+  X,
+  Eye,
+  EyeOff,
+  Cpu,
+  Activity,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import { Candidate, Weights } from "./types";
 import DNAClusterView from "./components/DNAClusterView";
@@ -38,6 +45,19 @@ import { TiltCard, MagneticWrapper, TextCharReveal, CursorSpotlight, Preloader, 
 export default function App() {
   // Application State
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [ghostMode, setGhostMode] = useState(false);
+
+  const processedCandidates = useMemo(() => {
+    if (!ghostMode) return candidates;
+    return candidates.map((cand, index) => ({
+      ...cand,
+      anonymized_profile: {
+        ...cand.anonymized_profile,
+        display_identifier: `Candidate ${index + 1}`
+      }
+    }));
+  }, [candidates, ghostMode]);
+
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [weights, setWeights] = useState<Weights>({
     techStack: 0.4,
@@ -59,6 +79,8 @@ export default function App() {
   const [strongFitsFiltered, setStrongFitsFiltered] = useState(false);
   const [compareCandidateIds, setCompareCandidateIds] = useState<string[]>([]);
   const [expandedCandidateIds, setExpandedCandidateIds] = useState<string[]>([]);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Bulk Processing State
   const [bulkProcessMode, setBulkProcessMode] = useState(false);
@@ -103,7 +125,7 @@ export default function App() {
   };
 
   // Real-time keyword filter (Search Bar)
-  const filteredCandidates = candidates.filter((cand) => {
+  const filteredCandidates = processedCandidates.filter((cand) => {
     if (strongFitsFiltered && (cand.final_score || 0) < 85) {
       return false;
     }
@@ -154,7 +176,7 @@ export default function App() {
     ];
 
     const rows = filteredCandidates.map((cand) => {
-      const originalRank = candidates.findIndex((c) => c.id === cand.id) + 1;
+      const originalRank = processedCandidates.findIndex((c) => c.id === cand.id) + 1;
       
       const competenciesString = (cand.ghost_competencies || [])
         .map((comp) => `${comp.concept} (${Math.round(comp.confidence * 100)}%)`)
@@ -535,7 +557,7 @@ export default function App() {
     setTimeout(() => runEvaluation(), 100);
   };
 
-  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0];
+  const selectedCandidate = processedCandidates.find((c) => c.id === selectedCandidateId) || processedCandidates[0];
 
   const getRankingStatus = () => {
     if (!selectedCandidate) {
@@ -546,7 +568,7 @@ export default function App() {
         icon: "📋"
       };
     }
-    const sorted = [...candidates].sort((a, b) => (b.final_score ?? 0) - (a.final_score ?? 0));
+    const sorted = [...processedCandidates].sort((a, b) => (b.final_score ?? 0) - (a.final_score ?? 0));
     const idx = sorted.findIndex(c => c.id === selectedCandidate.id);
     const score = selectedCandidate.final_score ?? 85;
     
@@ -675,7 +697,7 @@ export default function App() {
 
           <div className="flex items-center gap-2 text-[10px] font-mono bg-[#024950]/5 border border-[#024950]/20 px-3 py-1.5 rounded-xl text-[#024950]">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="font-bold">{candidates.length}</span> Active Profiles
+            <span className="font-bold">{processedCandidates.length}</span> Active Profiles
           </div>
         </div>
       </nav>
@@ -745,14 +767,96 @@ export default function App() {
                       const el = document.getElementById("bento-ingestion");
                       el?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="px-6 py-3 bg-white text-[#024950] border border-[#024950]/20 hover:bg-[#EBF7F9] text-xs font-bold font-display rounded-full shadow-sm active:scale-95 transition-all inline-block"
+                    className="px-6 py-3 bg-white text-[#024950] border border-[#024950]/20 hover:bg-[#EBF7F9] text-xs font-bold font-display rounded-full shadow-sm active:scale-95 transition-all inline-block cursor-pointer"
                   >
                     Ingest Resume
                   </button>
                 </MagneticWrapper>
+                <MagneticWrapper pullFactor={0.25}>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      id="hero-ghost-mode-toggle"
+                      onClick={() => setGhostMode(!ghostMode)}
+                      className={`px-6 py-3 rounded-full shadow-sm text-xs font-bold font-display border active:scale-95 transition-all flex items-center gap-2 cursor-pointer relative ${
+                        ghostMode
+                          ? "bg-[#3D52A0] text-white border-[#3D52A0] hover:bg-[#2C3E82] shadow-md shadow-[#3D52A0]/20"
+                          : "bg-white text-stone-700 border-stone-200 hover:bg-stone-50"
+                      }`}
+                      title="Toggle Ghost Mode to anonymize candidate identities across the entire platform"
+                    >
+                      {ghostMode ? <EyeOff className="w-3.5 h-3.5 text-white animate-pulse" /> : <Eye className="w-3.5 h-3.5 text-stone-500" />}
+                      <span>Ghost Mode: {ghostMode ? "ON" : "OFF"}</span>
+                    </button>
+                    
+                    {/* Visual Indicator of Anonymization State */}
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 ${
+                      ghostMode
+                        ? "border-emerald-200 bg-emerald-50/50 shadow-xs shadow-emerald-500/10"
+                        : "border-stone-200 bg-stone-50"
+                    }`}>
+                      <span className="relative flex h-2 w-2">
+                        {ghostMode && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2 w-2 transition-colors duration-300 ${ghostMode ? "bg-emerald-500" : "bg-stone-300"}`}></span>
+                      </span>
+                      <span className={`text-[9px] font-mono font-bold tracking-wider uppercase transition-colors duration-300 ${ghostMode ? "text-emerald-700" : "text-stone-400"}`}>
+                        {ghostMode ? "ANON ACTIVE" : "INACTIVE"}
+                      </span>
+                    </div>
+                  </div>
+                </MagneticWrapper>
               </motion.div>
             </div>
           </div>
+
+          {/* Professional real-time live telemetry metrics strip */}
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.0 }}
+            className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto p-4 rounded-2xl bg-white/45 backdrop-blur-md border border-[#E5E2D9] shadow-xs relative z-10"
+          >
+            <div className="flex items-center gap-3 px-3 py-1.5 border-r border-[#E5E2D9]/40 last:border-0">
+              <div className="w-8 h-8 rounded-lg bg-[#024950]/5 flex items-center justify-center text-[#024950]">
+                <Cpu className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider block">Bias Stripper</span>
+                <span className="text-xs font-bold text-[#003135] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Enabled
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-3 py-1.5 border-r border-[#E5E2D9]/40 last:border-0">
+              <div className="w-8 h-8 rounded-lg bg-[#024950]/5 flex items-center justify-center text-[#024950]">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider block">Calibrators</span>
+                <span className="text-xs font-bold text-[#003135]">3 Dynamic Axes</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-3 py-1.5 border-r border-[#E5E2D9]/40 last:border-0">
+              <div className="w-8 h-8 rounded-lg bg-[#024950]/5 flex items-center justify-center text-[#024950]">
+                <Layers className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider block">System Sandbox</span>
+                <span className="text-xs font-bold text-[#003135] text-emerald-700 font-mono">Isolated Core</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 px-3 py-1.5 last:border-0">
+              <div className="w-8 h-8 rounded-lg bg-[#024950]/5 flex items-center justify-center text-[#024950]">
+                <Sparkles className="w-4 h-4 animate-spin [animation-duration:8s]" />
+              </div>
+              <div>
+                <span className="text-[9px] font-mono text-stone-400 uppercase tracking-wider block">Role Presets</span>
+                <span className="text-xs font-bold text-[#003135]">3 Calibration Profiles</span>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Stepped 3D Podium Stage Container */}
           <div className="mt-12 relative w-full min-h-[380px] flex items-end justify-center py-10">
@@ -1095,7 +1199,7 @@ export default function App() {
         {/* Animated & Interactive KPI Dashboard Widgets */}
         <div className="lg:col-span-12">
           <KPIDashboardWidgets
-            candidates={candidates}
+            candidates={processedCandidates}
             loading={loadingCandidates || rankingInProgress}
             onFilterStrongFits={setStrongFitsFiltered}
             isStrongFitsFiltered={strongFitsFiltered}
@@ -1111,7 +1215,7 @@ export default function App() {
         {/* Interactive Bubble Chart Map */}
         <div className="lg:col-span-12 animate-slide-in">
           <InteractiveTalentChart
-            candidates={candidates}
+            candidates={processedCandidates}
             selectedCandidateId={selectedCandidateId}
             onSelectCandidate={(id) => setSelectedCandidateId(id)}
           />
@@ -1218,7 +1322,11 @@ export default function App() {
                   type="button"
                   id="preset-hard-core"
                   onClick={() => setPresetWeights(0.7, 0.15, 0.15)}
-                  className="text-[10px] bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 px-2.5 py-1.5 rounded-lg border border-[#E5E2D9] font-medium transition-all"
+                  className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
+                    Math.abs(weights.techStack - 0.7) < 0.01 && Math.abs(weights.trajectory - 0.15) < 0.01 && Math.abs(weights.domain - 0.15) < 0.01
+                      ? "bg-[#024950] text-white border-[#024950] shadow-sm"
+                      : "bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 border-[#E5E2D9]"
+                  }`}
                 >
                   ⚡ Hardcore Infrastructure (70:15:15)
                 </button>
@@ -1226,7 +1334,11 @@ export default function App() {
                   type="button"
                   id="preset-balanced"
                   onClick={() => setPresetWeights(0.34, 0.33, 0.33)}
-                  className="text-[10px] bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 px-2.5 py-1.5 rounded-lg border border-[#E5E2D9] font-medium transition-all"
+                  className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
+                    Math.abs(weights.techStack - 0.34) < 0.02 && Math.abs(weights.trajectory - 0.33) < 0.02 && Math.abs(weights.domain - 0.33) < 0.02
+                      ? "bg-[#024950] text-white border-[#024950] shadow-sm"
+                      : "bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 border-[#E5E2D9]"
+                  }`}
                 >
                   ⚖️ Balanced Generalist (34:33:33)
                 </button>
@@ -1234,7 +1346,11 @@ export default function App() {
                   type="button"
                   id="preset-domain"
                   onClick={() => setPresetWeights(0.2, 0.2, 0.6)}
-                  className="text-[10px] bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 px-2.5 py-1.5 rounded-lg border border-[#E5E2D9] font-medium transition-all"
+                  className={`text-[10px] px-2.5 py-1.5 rounded-lg border font-medium transition-all cursor-pointer ${
+                    Math.abs(weights.techStack - 0.2) < 0.01 && Math.abs(weights.trajectory - 0.2) < 0.01 && Math.abs(weights.domain - 0.6) < 0.01
+                      ? "bg-[#024950] text-white border-[#024950] shadow-sm"
+                      : "bg-stone-50 hover:bg-[#024950]/10 hover:text-[#024950] text-stone-700 border-[#E5E2D9]"
+                  }`}
                 >
                   🎯 High-Value Domain Expert (20:20:60)
                 </button>
@@ -1310,48 +1426,65 @@ export default function App() {
           
           {/* BENTO CARD 4: Live Leaderboard standings */}
           <div id="bento-leaderboard" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
-              <div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
-                  Evaluation Scoreboard
+            <div className="w-full flex flex-col h-full justify-between">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-stone-400">
+                    Evaluation Scoreboard
+                  </div>
+                  <h2 className="text-base font-display font-bold text-[#2D2926]">
+                    Talent Leaderboard Alignment Standings
+                  </h2>
                 </div>
-                <h2 className="text-base font-display font-bold text-[#2D2926]">
-                  Talent Leaderboard Alignment Standings
-                </h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    id="bulk-process-mode-btn"
+                    onClick={() => {
+                      setBulkProcessMode(!bulkProcessMode);
+                      if (!bulkProcessMode) {
+                        setBulkSelectedIds([]);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border active:scale-95 transition-all shadow-xs cursor-pointer ${
+                      bulkProcessMode
+                        ? "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700"
+                        : "text-stone-600 bg-stone-50 hover:bg-stone-100 border-stone-200"
+                    }`}
+                    title="Toggle Bulk Process Mode to select and run evaluation for multiple candidates at once"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Bulk Process Mode: {bulkProcessMode ? "ON" : "OFF"}</span>
+                  </button>
+
+                  <button
+                    id="ghost-mode-btn"
+                    onClick={() => setGhostMode(!ghostMode)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border active:scale-95 transition-all shadow-xs cursor-pointer ${
+                      ghostMode
+                        ? "bg-[#3D52A0] text-white border-[#3D52A0] hover:bg-[#2C3E82]"
+                        : "text-stone-600 bg-stone-50 hover:bg-stone-100 border-stone-200"
+                    }`}
+                    title="Toggle Ghost Mode to hide candidate names and view them anonymously"
+                  >
+                    {ghostMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>Ghost Mode: {ghostMode ? "ON" : "OFF"}</span>
+                  </button>
+
+                  <span className="text-xs text-stone-400 font-mono hidden sm:inline">
+                    Sorted by Rank desc
+                  </span>
+                  
+                  <button
+                    id="export-csv-btn"
+                    onClick={exportToCSV}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#024950] bg-[#024950]/5 hover:bg-[#024950]/10 border border-[#024950]/20 active:scale-95 transition-all shadow-xs cursor-pointer"
+                    title="Export currently filtered candidates to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  id="bulk-process-mode-btn"
-                  onClick={() => {
-                    setBulkProcessMode(!bulkProcessMode);
-                    if (!bulkProcessMode) {
-                      setBulkSelectedIds([]);
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border active:scale-95 transition-all shadow-xs cursor-pointer ${
-                    bulkProcessMode
-                      ? "bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700"
-                      : "text-stone-600 bg-stone-50 hover:bg-stone-100 border-stone-200"
-                  }`}
-                  title="Toggle Bulk Process Mode to select and run evaluation for multiple candidates at once"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Bulk Process Mode: {bulkProcessMode ? "ON" : "OFF"}</span>
-                </button>
-                <span className="text-xs text-stone-400 font-mono hidden sm:inline">
-                  Sorted by Rank desc
-                </span>
-                <button
-                  id="export-csv-btn"
-                  onClick={exportToCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-[#024950] bg-[#024950]/5 hover:bg-[#024950]/10 border border-[#024950]/20 active:scale-95 transition-all shadow-xs cursor-pointer"
-                  title="Export currently filtered candidates to CSV"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
-              </div>
-            </div>
 
             {/* Real-time Search Input & Compare Info */}
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -1363,7 +1496,7 @@ export default function App() {
                   placeholder="Filter by name, college surrogate, summary or competencies..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-[#FDFCF8] text-[#003135] border border-[#E5E2D9] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#024950] placeholder:text-stone-400 transition-all font-sans"
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-white text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3D52A0]/20 focus:border-[#3D52A0] placeholder:text-stone-400 transition-all font-sans"
                 />
                 {searchQuery && (
                   <button
@@ -1479,281 +1612,553 @@ export default function App() {
                 <p className="text-xs font-mono text-stone-500">Retrieving system index...</p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-stone-100 bg-[#FDFCF8]/50">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-stone-50 text-stone-500 text-[10px] font-mono uppercase border-b border-[#E5E2D9]">
-                      {bulkProcessMode && (
-                        <th className="py-3 px-3 text-center w-12">Select</th>
-                      )}
-                      <th className="py-3 px-3 text-center w-12">Rank</th>
-                      <th className="py-3 px-2 text-center w-14">Compare</th>
-                      <th className="py-3 px-4">Codename</th>
-                      <th className="py-3 px-4">Project DNA Shape</th>
-                      <th className="py-3 px-4 text-right w-24">Composite Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCandidates.length === 0 ? (
-                      <tr>
-                        <td colSpan={bulkProcessMode ? 6 : 5} className="py-8 text-center text-xs text-stone-400 font-sans italic">
-                          No candidates match current filter.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredCandidates.map((cand, index) => {
-                        const isSelected = cand.id === selectedCandidateId;
-                        const hasCalculated = typeof cand.final_score === "number";
-                        const isComparing = compareCandidateIds.includes(cand.id);
-                        const originalRank = candidates.findIndex((c) => c.id === cand.id) + 1;
-                        const isExpanded = expandedCandidateIds.includes(cand.id);
+              <>
+                {/* Mobile Breakpoint Card-Based View */}
+                <div className="block md:hidden space-y-3">
+                  {filteredCandidates.length === 0 ? (
+                    <div className="py-12 text-center text-xs text-stone-400 font-sans italic bg-[#FDFCF8]/50 border border-stone-100 rounded-2xl">
+                      No candidates match current filter.
+                    </div>
+                  ) : (
+                    filteredCandidates.map((cand, index) => {
+                      const isSelected = cand.id === selectedCandidateId;
+                      const hasCalculated = typeof cand.final_score === "number";
+                      const isComparing = compareCandidateIds.includes(cand.id);
+                      const originalRank = candidates.findIndex((c) => c.id === cand.id) + 1;
+                      const isExpanded = expandedCandidateIds.includes(cand.id);
 
-                        return (
-                          <React.Fragment key={cand.id}>
-                            <motion.tr
-                              layout
-                              initial={{ opacity: 0, y: 15 }}
-                              whileInView={{ opacity: 1, y: 0 }}
-                              viewport={{ once: true, margin: "-40px" }}
-                              transition={{
-                                opacity: { duration: 0.35, ease: "easeOut" },
-                                y: { type: "spring", stiffness: 100, damping: 15, delay: Math.min(index * 0.05, 0.4) },
-                                layout: { type: "spring", stiffness: 300, damping: 30 }
-                              }}
-                              onClick={() => setSelectedCandidateId(cand.id)}
-                              className={`group cursor-pointer hover:bg-[#F1EFE9] transition-all border-b border-stone-100/80 ${
-                                isSelected ? "bg-[#EDE8F5] hover:bg-[#EDE8F5]" : ""
-                              }`}
-                            >
-                              {/* Bulk Select Checkbox Column */}
+                      return (
+                        <motion.div
+                          key={cand.id}
+                          layout
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            opacity: { duration: 0.3, ease: "easeOut" },
+                            y: { type: "spring", stiffness: 100, damping: 15, delay: Math.min(index * 0.04, 0.3) }
+                          }}
+                          onClick={() => setSelectedCandidateId(cand.id)}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer relative ${
+                            isSelected 
+                              ? "bg-[#EDE8F5]/60 border-[#3D52A0] shadow-sm" 
+                              : "bg-[#FDFCF8]/70 border-stone-150 hover:border-stone-200"
+                          }`}
+                        >
+                          {/* Header Line */}
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-2">
                               {bulkProcessMode && (
-                                <td className="py-3.5 px-3 text-center" onClick={(e) => { e.stopPropagation(); toggleBulkSelect(cand.id); }}>
-                                  <div className="flex items-center justify-center">
-                                    <input
-                                      type="checkbox"
-                                      checked={bulkSelectedIds.includes(cand.id)}
-                                      onChange={() => {}} // event handled by onClick on td to prevent react warning
-                                      className="w-4 h-4 rounded border-stone-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-                                    />
-                                  </div>
-                                </td>
+                                <div 
+                                  className="flex items-center justify-center p-1 -m-1" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    toggleBulkSelect(cand.id); 
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={bulkSelectedIds.includes(cand.id)}
+                                    onChange={() => {}} 
+                                    className="w-4 h-4 rounded border-stone-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                                  />
+                                </div>
                               )}
 
-                              {/* Rank */}
-                              <td className="py-3.5 px-3 text-center font-display font-bold text-sm">
-                                <div className="flex items-center justify-center">
-                                  {originalRank === 1 ? (
-                                    <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center text-xs shadow-sm">
-                                      1
+                              <div className="flex-shrink-0">
+                                {originalRank === 1 ? (
+                                  <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center text-xs font-bold shadow-xs">
+                                    1
+                                  </span>
+                                ) : originalRank === 2 ? (
+                                  <span className="w-6 h-6 rounded-full bg-stone-200 text-stone-800 border border-stone-300 flex items-center justify-center text-xs font-bold">
+                                    2
+                                  </span>
+                                ) : originalRank === 3 ? (
+                                  <span className="w-6 h-6 rounded-full bg-amber-50 text-amber-900/60 border border-amber-100 flex items-center justify-center text-xs font-bold">
+                                    3
+                                  </span>
+                                ) : (
+                                  <span className="text-stone-400 text-xs font-mono font-bold">#{originalRank || "-"}</span>
+                                )}
+                              </div>
+
+                              <div>
+                                <div className="font-display font-bold text-xs text-[#1B244A] flex items-center gap-1.5">
+                                  <span>{cand.anonymized_profile.display_identifier}</span>
+                                  {(cand.id.startsWith("cand-17") || cand.id.startsWith("cand-16")) && (
+                                    <span className="text-[7px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-mono uppercase font-bold">
+                                      New
                                     </span>
-                                  ) : originalRank === 2 ? (
-                                    <span className="w-6 h-6 rounded-full bg-stone-200 text-stone-800 border border-stone-300 flex items-center justify-center text-xs">
-                                      2
-                                    </span>
-                                  ) : originalRank === 3 ? (
-                                    <span className="w-6 h-6 rounded-full bg-amber-50 text-amber-900/60 border border-amber-100 flex items-center justify-center text-xs">
-                                      3
-                                    </span>
-                                  ) : (
-                                    <span className="text-stone-400 text-xs font-mono">{originalRank || "-"}</span>
                                   )}
                                 </div>
-                              </td>
+                              </div>
+                            </div>
 
-                              {/* Compare Selection Button */}
-                              <td className="py-3.5 px-2 text-center" onClick={(e) => { e.stopPropagation(); toggleCompare(cand.id); }}>
-                                <div className="flex items-center justify-center">
-                                  <motion.button
-                                    type="button"
-                                    whileTap={{ scale: 0.8 }}
-                                    animate={{ 
-                                      scale: isComparing ? 1.15 : 1,
-                                      rotate: isComparing ? [0, 8, -8, 0] : 0
-                                    }}
-                                    transition={{ 
-                                      scale: { type: "spring", stiffness: 400, damping: 15 },
-                                      rotate: { type: "keyframes", duration: 0.35 }
-                                    }}
-                                    className={`p-2 rounded-xl border cursor-pointer transition-all ${
-                                      isComparing
-                                        ? "bg-red-50 text-red-500 border-red-200 shadow-xs"
-                                        : "bg-stone-50 text-stone-400 border-stone-200/80 hover:text-stone-600 hover:bg-stone-100/80"
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.8 }}
+                                className={`p-1.5 rounded-lg border cursor-pointer transition-all ${
+                                  isComparing
+                                    ? "bg-red-50 text-red-500 border-red-200"
+                                    : "bg-stone-50/50 text-stone-400 border-stone-200/60 hover:text-stone-600"
+                                }`}
+                                onClick={() => toggleCompare(cand.id)}
+                                title={isComparing ? "Remove from comparison" : "Add to comparison"}
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${isComparing ? "fill-red-500 text-red-500" : "fill-transparent text-stone-400"}`} />
+                              </motion.button>
+
+                              {hasCalculated ? (
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className={`font-mono text-[11px] font-extrabold px-2 py-0.5 rounded-full ${
+                                      cand.final_score! >= 85
+                                        ? "bg-[#3D52A0] text-[#FDFCF8]"
+                                        : cand.final_score! >= 70
+                                        ? "bg-amber-100 text-amber-900 border border-amber-200"
+                                        : "bg-stone-100 text-stone-600"
                                     }`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleCompare(cand.id);
-                                    }}
-                                    title={isComparing ? "Remove from comparison" : "Add to comparison"}
                                   >
-                                    <Heart className={`w-4 h-4 transition-colors ${isComparing ? "fill-red-500 text-red-500" : "fill-transparent text-stone-400"}`} />
-                                  </motion.button>
+                                    <AnimatedScore value={cand.final_score!} />%
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDetails(cand.id)}
+                                    className="p-1 hover:bg-[#3D52A0]/10 rounded-lg text-stone-400 hover:text-[#3D52A0] transition-colors cursor-pointer"
+                                  >
+                                    <ChevronDown
+                                      className={`w-3.5 h-3.5 transform transition-transform duration-200 ${
+                                        isExpanded ? "rotate-180 text-[#3D52A0]" : ""
+                                      }`}
+                                    />
+                                  </button>
                                 </div>
-                              </td>
+                              ) : (
+                                <span className="text-[9px] font-mono text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 animate-pulse">
+                                  Pending Match
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-                              {/* Codename & Summary preview */}
-                              <td className="py-3.5 px-4">
-                                <div>
-                                  <div className="font-display font-bold text-xs text-[#1B244A] flex items-center gap-2">
-                                    {cand.anonymized_profile.display_identifier}
-                                    {(cand.id.startsWith("cand-17") || cand.id.startsWith("cand-16")) && (
-                                      <span className="text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.2 rounded font-mono uppercase font-bold">
-                                        New
+                          {/* Profile Summary & Project DNA */}
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-stone-500 font-sans leading-relaxed">
+                              {cand.anonymized_profile.summary}
+                            </p>
+                            
+                            <div className="flex items-center gap-3 text-[10px] font-mono text-stone-600 bg-stone-50/60 p-2 rounded-xl border border-stone-100/50">
+                              <div>
+                                <span className="text-stone-400">Flow:</span> {cand.project_dna.data_flow}
+                              </div>
+                              <div className="border-l border-stone-200 pl-3">
+                                <span className="text-stone-400">Footprint:</span> {cand.project_dna.scale_footprint}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Mobile Dropdown Sub-Metrics */}
+                          <AnimatePresence initial={false}>
+                            {isExpanded && hasCalculated && cand.sub_metrics && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-3 pt-3 border-t border-stone-150 space-y-2.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="grid grid-cols-1 gap-2 text-[11px]">
+                                  {/* Technical */}
+                                  <div className="bg-white/80 p-2.5 rounded-xl border border-stone-100">
+                                    <div className="flex justify-between items-center font-mono font-bold text-stone-500 mb-1">
+                                      <span>Technical Match</span>
+                                      <span className="text-[#3D52A0]">{cand.sub_metrics.technical_match_score}/100</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-[#3D52A0] rounded-full" style={{ width: `${cand.sub_metrics.technical_match_score}%` }} />
+                                    </div>
+                                  </div>
+
+                                  {/* Behavioral */}
+                                  <div className="bg-white/80 p-2.5 rounded-xl border border-stone-100">
+                                    <div className="flex justify-between items-center font-mono font-bold text-stone-500 mb-1">
+                                      <span>Behavioral Trajectory</span>
+                                      <span className="text-[#7091E6]">{cand.sub_metrics.behavioral_trajectory_score}/100</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-[#7091E6] rounded-full" style={{ width: `${cand.sub_metrics.behavioral_trajectory_score}%` }} />
+                                    </div>
+                                  </div>
+
+                                  {/* Domain */}
+                                  <div className="bg-white/80 p-2.5 rounded-xl border border-stone-100">
+                                    <div className="flex justify-between items-center font-mono font-bold text-stone-500 mb-1">
+                                      <span>Domain Alignment</span>
+                                      <span className="text-[#8697C4]">{cand.sub_metrics.domain_alignment_score}/100</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-[#8697C4] rounded-full" style={{ width: `${cand.sub_metrics.domain_alignment_score}%` }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Desktop & Tablet Table with Horizontal Scrolling wrapper */}
+                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm transition-all duration-300">
+                  <table className="w-full text-left border-collapse table-auto bg-white rounded-xl overflow-hidden border border-stone-150/60">
+                    <thead className="bg-stone-50/80">
+                      <tr className="text-stone-500 text-[10px] font-mono uppercase tracking-wider border-b border-[#E5E2D9]">
+                        {bulkProcessMode && (
+                          <th className="py-3 px-4 text-center w-14 select-none">Select</th>
+                        )}
+                        <th className="py-3 px-4 text-center w-16 select-none">Rank</th>
+                        <th className="py-3 px-3 text-center w-16 select-none">Compare</th>
+                        <th className="py-3 px-5 select-none text-left">Codename / Target Profile</th>
+                        <th className="py-3 px-5 select-none text-left">Project DNA Shape & Telemetry</th>
+                        <th className="py-3 px-5 text-right w-36 select-none">
+                          <span className="flex items-center justify-end gap-1">
+                            Composite Score
+                            <span className="text-[8px] bg-[#3D52A0]/10 text-[#3D52A0] px-1.5 py-0.5 rounded font-bold">Sorted ↓</span>
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCandidates.length === 0 ? (
+                        <tr>
+                          <td colSpan={bulkProcessMode ? 6 : 5} className="py-12 text-center text-xs text-stone-400 font-sans italic">
+                            No candidates match current filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCandidates.map((cand, index) => {
+                          const isSelected = cand.id === selectedCandidateId;
+                          const hasCalculated = typeof cand.final_score === "number";
+                          const isComparing = compareCandidateIds.includes(cand.id);
+                          const originalRank = candidates.findIndex((c) => c.id === cand.id) + 1;
+                          const isExpanded = expandedCandidateIds.includes(cand.id);
+
+                          // Tier classification
+                          const scoreTier = cand.final_score 
+                            ? cand.final_score >= 85 
+                              ? { name: "S-Tier", desc: "Excellent Fit", color: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 shadow-xs", border: "border-indigo-100/30" }
+                              : cand.final_score >= 70 
+                                ? { name: "A-Tier", desc: "Strong Alignment", color: "bg-blue-50 text-blue-700 border-blue-200/60 shadow-3xs", border: "border-blue-100/20" }
+                                : { name: "B-Tier", desc: "Compatible", color: "bg-slate-50 text-slate-600 border-slate-200/70 shadow-4xs", border: "border-slate-100/10" }
+                            : null;
+
+                          const dataFlowStyles = {
+                            "Event-Driven": { bg: "bg-indigo-50/80 text-indigo-700 border-indigo-200/55", label: "Event-Driven", dot: "bg-indigo-500" },
+                            "Batch Processing": { bg: "bg-sky-50/80 text-sky-700 border-sky-200/55", label: "Batch", dot: "bg-sky-500" },
+                            "Microservices": { bg: "bg-emerald-50/80 text-emerald-700 border-emerald-200/55", label: "Microservices", dot: "bg-emerald-500" },
+                            "Monolithic CRUD": { bg: "bg-stone-50/80 text-stone-700 border-stone-200/55", label: "Monolithic", dot: "bg-stone-500" }
+                          }[cand.project_dna.data_flow] || { bg: "bg-stone-50/80 text-stone-700 border-stone-200/55", label: "Monolithic", dot: "bg-stone-400" };
+
+                          const scaleFootprintStyles = {
+                            "High-Throughput": "bg-rose-50/80 text-rose-700 border-rose-200/50",
+                            "Low-Latency Real-Time": "bg-amber-50/80 text-amber-800 border-amber-200/50",
+                            "Mass Storage": "bg-blue-50/80 text-blue-700 border-blue-200/50",
+                            "Standard Scale": "bg-stone-50/80 text-stone-600 border-stone-200/50"
+                          }[cand.project_dna.scale_footprint] || "bg-stone-50/80 text-stone-600 border-stone-100";
+
+                          const cultureStyles = {
+                            "Serverless/Cloud-Native": "bg-violet-50/80 text-violet-700 border-violet-200/50",
+                            "Self-Hosted/Kubernetes": "bg-cyan-50/80 text-cyan-700 border-cyan-200/50",
+                            "Bare-Metal": "bg-orange-50/80 text-orange-700 border-orange-200/50"
+                          }[cand.project_dna.infrastructure_culture] || "bg-stone-50/80 text-stone-600 border-stone-100";
+
+                          return (
+                            <React.Fragment key={cand.id}>
+                              <motion.tr
+                                layout
+                                initial={{ opacity: 0, y: 15 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-40px" }}
+                                transition={{
+                                  opacity: { duration: 0.35, ease: "easeOut" },
+                                  y: { type: "spring", stiffness: 100, damping: 15, delay: Math.min(index * 0.05, 0.4) },
+                                  layout: { type: "spring", stiffness: 300, damping: 30 }
+                                }}
+                                onClick={() => setSelectedCandidateId(cand.id)}
+                                className={`group cursor-pointer border-b border-stone-100 transition-all ${
+                                  isSelected 
+                                    ? "bg-[#EDE8F5]/60 hover:bg-[#EDE8F5]/75 shadow-xs" 
+                                    : "bg-white hover:bg-indigo-50/20"
+                                }`}
+                              >
+                                {/* Bulk Select Checkbox Column */}
+                                {bulkProcessMode && (
+                                  <td className="py-3.5 px-4 text-center" onClick={(e) => { e.stopPropagation(); toggleBulkSelect(cand.id); }}>
+                                    <div className="flex items-center justify-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={bulkSelectedIds.includes(cand.id)}
+                                        onChange={() => {}} // event handled by onClick on td to prevent react warning
+                                        className="w-4 h-4 rounded border-stone-300 text-[#3D52A0] focus:ring-[#3D52A0] cursor-pointer accent-[#3D52A0]"
+                                      />
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Premium Rank Medallions */}
+                                <td className={`py-3.5 px-4 text-center border-l-4 transition-all ${isSelected ? "border-[#3D52A0]" : "border-transparent"}`}>
+                                  <div className="flex items-center justify-center">
+                                    {originalRank === 1 ? (
+                                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 text-amber-950 border border-amber-300 flex items-center justify-center text-xs font-black shadow-xs tracking-tight relative group-hover:scale-105 transition-transform">
+                                        1
+                                        <span className="absolute -top-1 -right-1 text-[8px]">👑</span>
+                                      </span>
+                                    ) : originalRank === 2 ? (
+                                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-stone-50 to-stone-200 text-stone-850 border border-stone-350 flex items-center justify-center text-xs font-black shadow-xs tracking-tight">
+                                        2
+                                      </span>
+                                    ) : originalRank === 3 ? (
+                                      <span className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-50 to-orange-150 text-orange-950 border border-orange-250/80 flex items-center justify-center text-xs font-black shadow-xs tracking-tight">
+                                        3
+                                      </span>
+                                    ) : (
+                                      <span className="font-mono text-xs font-bold text-stone-400 bg-stone-100/50 px-2 py-0.5 rounded-md border border-stone-200/50">
+                                        #{originalRank || "-"}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[10px] text-stone-500 font-sans line-clamp-1 max-w-xs mt-0.5">
-                                    {cand.anonymized_profile.summary}
-                                  </div>
-                                </div>
-                              </td>
+                                </td>
 
-                              {/* DNA Signature summary */}
-                              <td className="py-3.5 px-4 text-xs font-mono text-stone-600">
-                                <div className="flex flex-col gap-0.5">
-                                  <span>{cand.project_dna.data_flow}</span>
-                                  <span className="text-[9px] text-stone-400">
-                                    {cand.project_dna.scale_footprint}
-                                  </span>
-                                </div>
-                              </td>
-
-                              {/* Composite Match alignment score */}
-                              <td className="py-3.5 px-4 text-right">
-                                {hasCalculated ? (
-                                  <div className="inline-flex items-center gap-1.5 justify-end">
-                                    <span
-                                      className={`font-mono text-xs font-extrabold px-2.5 py-1 rounded-full ${
-                                        cand.final_score! >= 85
-                                          ? "bg-[#3D52A0] text-[#FDFCF8]"
-                                          : cand.final_score! >= 70
-                                          ? "bg-amber-100 text-amber-900 border border-amber-200"
-                                          : "bg-stone-100 text-stone-600"
-                                      }`}
-                                    >
-                                      <AnimatedScore value={cand.final_score!} />%
-                                    </span>
-                                    <button
-                                      id={`toggle-details-${cand.id}`}
+                                {/* Compare Selection Button */}
+                                <td className="py-3.5 px-3 text-center" onClick={(e) => { e.stopPropagation(); toggleCompare(cand.id); }}>
+                                  <div className="flex items-center justify-center">
+                                    <motion.button
                                       type="button"
+                                      whileTap={{ scale: 0.8 }}
+                                      animate={{ 
+                                        scale: isComparing ? 1.15 : 1,
+                                        rotate: isComparing ? [0, 8, -8, 0] : 0
+                                      }}
+                                      transition={{ 
+                                        scale: { type: "spring", stiffness: 400, damping: 15 },
+                                        rotate: { type: "keyframes", duration: 0.35 }
+                                      }}
+                                      className={`p-2 rounded-xl border cursor-pointer transition-all ${
+                                        isComparing
+                                          ? "bg-red-50 text-red-500 border-red-200 shadow-xs"
+                                          : "bg-stone-50 text-stone-400 border-stone-200/80 hover:text-stone-600 hover:bg-stone-100/80"
+                                      }`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        toggleDetails(cand.id);
+                                        toggleCompare(cand.id);
                                       }}
-                                      className="p-1 hover:bg-[#3D52A0]/10 rounded-lg text-stone-400 hover:text-[#3D52A0] transition-colors cursor-pointer flex items-center justify-center ml-1"
-                                      title="Show contribution breakdown"
+                                      title={isComparing ? "Remove from comparison" : "Add to comparison"}
                                     >
-                                      <ChevronDown
-                                        className={`w-3.5 h-3.5 transform transition-transform duration-200 ${
-                                          isExpanded ? "rotate-180 text-[#3D52A0]" : ""
-                                        }`}
-                                      />
-                                    </button>
+                                      <Heart className={`w-4 h-4 transition-colors ${isComparing ? "fill-red-500 text-red-500" : "fill-transparent text-stone-400"}`} />
+                                    </motion.button>
                                   </div>
-                                ) : (
-                                  <span className="text-[10px] font-mono text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 animate-pulse">
-                                    Pending Agent 2
-                                  </span>
-                                )}
-                              </td>
-                            </motion.tr>
+                                </td>
 
-                            <AnimatePresence initial={false}>
-                              {isExpanded && hasCalculated && cand.sub_metrics && (
-                                <motion.tr
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="bg-[#EDE8F5]/15 border-b border-stone-100/80"
-                                >
-                                  <td colSpan={bulkProcessMode ? 6 : 5} className="py-3 px-5 text-stone-700">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                                      {/* Technical Breakdown */}
-                                      <div className="bg-white/90 p-3 rounded-xl border border-[#E5E2D9]/40 shadow-xs flex flex-col justify-between">
-                                        <div>
-                                          <div className="flex justify-between items-center text-[9px] font-mono text-[#3D52A0]/80 uppercase tracking-wider mb-1 font-bold">
-                                            <span>Technical Match</span>
-                                            <span>
-                                              +{(cand.sub_metrics.technical_match_score * weights.techStack).toFixed(1)} pts
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-extrabold text-[#1B244A] text-sm">
-                                              {cand.sub_metrics.technical_match_score}
-                                              <span className="text-[10px] text-stone-400 font-normal">/100</span>
-                                            </span>
-                                            <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.techStack * 100)}%</span>
-                                          </div>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-[#3D52A0] rounded-full transition-all duration-500"
-                                            style={{ width: `${cand.sub_metrics.technical_match_score}%` }}
-                                          />
-                                        </div>
-                                      </div>
-
-                                      {/* Behavioral Breakdown */}
-                                      <div className="bg-white/90 p-3 rounded-xl border border-[#E5E2D9]/40 shadow-xs flex flex-col justify-between">
-                                        <div>
-                                          <div className="flex justify-between items-center text-[9px] font-mono text-[#7091E6]/80 uppercase tracking-wider mb-1 font-bold">
-                                            <span>Behavioral Trajectory</span>
-                                            <span>
-                                              +{(cand.sub_metrics.behavioral_trajectory_score * weights.trajectory).toFixed(1)} pts
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-extrabold text-[#1B244A] text-sm">
-                                              {cand.sub_metrics.behavioral_trajectory_score}
-                                              <span className="text-[10px] text-stone-400 font-normal">/100</span>
-                                            </span>
-                                            <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.trajectory * 100)}%</span>
-                                          </div>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-[#7091E6] rounded-full transition-all duration-500"
-                                            style={{ width: `${cand.sub_metrics.behavioral_trajectory_score}%` }}
-                                          />
-                                        </div>
-                                      </div>
-
-                                      {/* Domain Breakdown */}
-                                      <div className="bg-white/90 p-3 rounded-xl border border-[#E5E2D9]/40 shadow-xs flex flex-col justify-between">
-                                        <div>
-                                          <div className="flex justify-between items-center text-[9px] font-mono text-[#8697C4]/80 uppercase tracking-wider mb-1 font-bold">
-                                            <span>Domain Alignment</span>
-                                            <span>
-                                              +{(cand.sub_metrics.domain_alignment_score * weights.domain).toFixed(1)} pts
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between items-center mb-1.5">
-                                            <span className="font-extrabold text-[#1B244A] text-sm">
-                                              {cand.sub_metrics.domain_alignment_score}
-                                              <span className="text-[10px] text-stone-400 font-normal">/100</span>
-                                            </span>
-                                            <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.domain * 100)}%</span>
-                                          </div>
-                                        </div>
-                                        <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full bg-[#8697C4] rounded-full transition-all duration-500"
-                                            style={{ width: `${cand.sub_metrics.domain_alignment_score}%` }}
-                                          />
-                                        </div>
-                                      </div>
+                                {/* Codename & Summary preview */}
+                                <td className="py-3.5 px-5">
+                                  <div className="flex flex-col gap-1 max-w-sm lg:max-w-md">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-display font-extrabold text-sm text-[#1B244A] tracking-tight">
+                                        {cand.anonymized_profile.display_identifier}
+                                      </span>
+                                      {(cand.id.startsWith("cand-17") || cand.id.startsWith("cand-16")) && (
+                                        <span className="text-[8px] tracking-wider uppercase bg-emerald-500/10 text-emerald-800 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
+                                          New Core
+                                        </span>
+                                      )}
                                     </div>
-                                  </td>
-                                </motion.tr>
-                              )}
-                            </AnimatePresence>
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                                    <div className="text-[11px] text-stone-500 leading-relaxed line-clamp-2">
+                                      {cand.anonymized_profile.summary}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* DNA Signature summary (High-end badges) */}
+                                <td className="py-3.5 px-5">
+                                  <div className="flex flex-wrap gap-1.5 max-w-xs md:max-w-sm lg:max-w-md">
+                                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${dataFlowStyles.bg}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${dataFlowStyles.dot}`} />
+                                      {dataFlowStyles.label}
+                                    </span>
+                                    <span className={`inline-flex items-center text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${scaleFootprintStyles}`}>
+                                      {cand.project_dna.scale_footprint}
+                                    </span>
+                                    <span className={`inline-flex items-center text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${cultureStyles}`}>
+                                      {cand.project_dna.infrastructure_culture}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                {/* Composite Match alignment score */}
+                                <td className="py-3.5 px-5 text-right">
+                                  {hasCalculated ? (
+                                    <div className="inline-flex items-center gap-2 justify-end select-none">
+                                      <div className="flex flex-col items-end text-right">
+                                        <span
+                                          className={`font-mono text-sm font-extrabold px-3 py-1 rounded-full border shadow-2xs ${scoreTier?.color}`}
+                                        >
+                                          <AnimatedScore value={cand.final_score!} />%
+                                        </span>
+                                        <span className="text-[9px] font-mono text-stone-400 mt-1 uppercase font-bold tracking-wider">
+                                          {scoreTier?.name} • {scoreTier?.desc}
+                                        </span>
+                                      </div>
+                                      <button
+                                        id={`toggle-details-${cand.id}`}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleDetails(cand.id);
+                                        }}
+                                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                          isExpanded 
+                                            ? "bg-[#3D52A0] text-white border-[#3D52A0]" 
+                                            : "hover:bg-[#3D52A0]/10 text-stone-400 hover:text-[#3D52A0] border-stone-200"
+                                        }`}
+                                        title={isExpanded ? "Hide detailed analytics" : "Show detailed analytics"}
+                                      >
+                                        <ChevronDown
+                                          className={`w-4 h-4 transform transition-transform duration-300 ${
+                                            isExpanded ? "rotate-180" : ""
+                                          }`}
+                                        />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 animate-pulse">
+                                      Pending Agent 2
+                                    </span>
+                                  )}
+                                </td>
+                              </motion.tr>
+
+                              <AnimatePresence initial={false}>
+                                {isExpanded && hasCalculated && cand.sub_metrics && (
+                                  <motion.tr
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="bg-stone-50/50 border-b border-stone-200/80"
+                                  >
+                                    <td colSpan={bulkProcessMode ? 6 : 5} className="py-4 px-6 text-stone-700">
+                                      <div className="mb-3.5 flex items-center justify-between border-b border-stone-200/60 pb-2">
+                                        <div className="flex items-center gap-2">
+                                          <Sparkles className="w-4 h-4 text-[#3D52A0]" />
+                                          <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-[#1B244A]">
+                                            AI-Router Multi-Axis Diagnostic Audit
+                                          </span>
+                                        </div>
+                                        <span className="text-[10px] font-mono text-stone-400 uppercase">
+                                          Isolated Calibration Sandbox
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                        {/* Technical Breakdown */}
+                                        <div className="bg-white p-4 rounded-xl border border-stone-200/65 shadow-3xs flex flex-col justify-between space-y-3.5">
+                                          <div>
+                                            <div className="flex justify-between items-center text-[9px] font-mono text-[#3D52A0]/90 uppercase tracking-wider mb-1 font-bold">
+                                              <span>Technical Match</span>
+                                              <span>
+                                                +{(cand.sub_metrics.technical_match_score * weights.techStack).toFixed(1)} pts
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                              <span className="font-extrabold text-[#1B244A] text-sm">
+                                                {cand.sub_metrics.technical_match_score}
+                                                <span className="text-[10px] text-stone-400 font-normal">/100</span>
+                                              </span>
+                                              <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.techStack * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-full bg-[#3D52A0] rounded-full transition-all duration-500"
+                                                style={{ width: `${cand.sub_metrics.technical_match_score}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="bg-[#3D52A0]/5 p-3 rounded-lg border border-[#3D52A0]/10 text-[10px] text-stone-600 leading-relaxed italic">
+                                            &ldquo;{cand.sub_metrics.reasoning?.technical || "Pristine technical schema matching with zero manual developer bias."}&rdquo;
+                                          </div>
+                                        </div>
+
+                                        {/* Behavioral Breakdown */}
+                                        <div className="bg-white p-4 rounded-xl border border-stone-200/65 shadow-3xs flex flex-col justify-between space-y-3.5">
+                                          <div>
+                                            <div className="flex justify-between items-center text-[9px] font-mono text-[#7091E6]/95 uppercase tracking-wider mb-1 font-bold">
+                                              <span>Behavioral Trajectory</span>
+                                              <span>
+                                                +{(cand.sub_metrics.behavioral_trajectory_score * weights.trajectory).toFixed(1)} pts
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                              <span className="font-extrabold text-[#1B244A] text-sm">
+                                                {cand.sub_metrics.behavioral_trajectory_score}
+                                                <span className="text-[10px] text-stone-400 font-normal">/100</span>
+                                              </span>
+                                              <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.trajectory * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-full bg-[#7091E6] rounded-full transition-all duration-500"
+                                                style={{ width: `${cand.sub_metrics.behavioral_trajectory_score}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="bg-[#7091E6]/5 p-3 rounded-lg border border-[#7091E6]/10 text-[10px] text-stone-600 leading-relaxed italic">
+                                            &ldquo;{cand.sub_metrics.reasoning?.behavioral || "Exceptional project leadership telemetry scores compiled at runtime."}&rdquo;
+                                          </div>
+                                        </div>
+
+                                        {/* Domain Breakdown */}
+                                        <div className="bg-white p-4 rounded-xl border border-stone-200/65 shadow-3xs flex flex-col justify-between space-y-3.5">
+                                          <div>
+                                            <div className="flex justify-between items-center text-[9px] font-mono text-[#8697C4]/95 uppercase tracking-wider mb-1 font-bold">
+                                              <span>Domain Alignment</span>
+                                              <span>
+                                                +{(cand.sub_metrics.domain_alignment_score * weights.domain).toFixed(1)} pts
+                                              </span>
+                                            </div>
+                                            <div className="flex justify-between items-center mb-1.5">
+                                              <span className="font-extrabold text-[#1B244A] text-sm">
+                                                {cand.sub_metrics.domain_alignment_score}
+                                                <span className="text-[10px] text-stone-400 font-normal">/100</span>
+                                              </span>
+                                              <span className="text-[10px] text-stone-400 font-mono">Weight: {Math.round(weights.domain * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                              <div
+                                                className="h-full bg-[#8697C4] rounded-full transition-all duration-500"
+                                                style={{ width: `${cand.sub_metrics.domain_alignment_score}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="bg-[#8697C4]/5 p-3 rounded-lg border border-[#8697C4]/10 text-[10px] text-stone-600 leading-relaxed italic">
+                                            &ldquo;{cand.sub_metrics.reasoning?.domain || "Accurate domain alignment score reflecting production infrastructure demands."}&rdquo;
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </motion.tr>
+                                )}
+                              </AnimatePresence>
+                            </React.Fragment>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
+            </div>
           </div>
 
           {/* BENTO CARD 5: Selected Candidate Deep-Dive Verification Matrix */}
@@ -1761,7 +2166,7 @@ export default function App() {
             {compareCandidateIds.length >= 2 ? (
               (() => {
                 const compCandidates = compareCandidateIds
-                  .map(id => candidates.find(c => c.id === id))
+                  .map(id => processedCandidates.find(c => c.id === id))
                   .filter((c): c is Candidate => !!c);
                 if (compCandidates.length < 2) return null;
                 
@@ -1971,7 +2376,7 @@ export default function App() {
                   {compareCandidateIds.length === 1 && (
                     <div className="p-3 bg-indigo-50 border border-indigo-100 text-[#3D52A0] rounded-2xl text-xs flex justify-between items-center gap-2 animate-pulse">
                       <span>
-                        <strong>Compare Mode:</strong> 1 candidate selected ({candidates.find(c => c.id === compareCandidateIds[0])?.anonymized_profile.display_identifier}). Select up to 3 more candidates from the leaderboard to compare simultaneously!
+                        <strong>Compare Mode:</strong> 1 candidate selected ({processedCandidates.find(c => c.id === compareCandidateIds[0])?.anonymized_profile.display_identifier}). Select up to 3 more candidates from the leaderboard to compare simultaneously!
                       </span>
                       <button
                         onClick={() => setCompareCandidateIds([])}
@@ -2162,12 +2567,32 @@ export default function App() {
       </main>
 
       {/* Footer System Architecture Info */}
-      <footer className="border-t border-[#E5E2D9] py-8 px-6 bg-stone-50 text-center text-xs text-stone-500 font-mono mt-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <footer className="border-t border-[#E5E2D9] py-8 px-6 bg-stone-50 text-center text-xs text-stone-500 font-mono mt-10" id="app-footer">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 bg-[#3D52A0] rounded-full" />
             <span>Operational System Topology: Node 'HireLens' Online</span>
           </div>
+          
+          {/* Privacy Policy & Terms Links */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-stone-600">
+            <button
+              id="footer-privacy-link"
+              onClick={() => setShowPrivacyModal(true)}
+              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
+            >
+              Privacy Policy
+            </button>
+            <span className="text-stone-300">|</span>
+            <button
+              id="footer-terms-link"
+              onClick={() => setShowTermsModal(true)}
+              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
+            >
+              Terms of Service
+            </button>
+          </div>
+
           <div className="flex items-center gap-4">
             <span>Agent 1: gemini-2.5-flash</span>
             <div className="w-1.5 h-1.5 bg-stone-400 rounded-full" />
@@ -2178,6 +2603,211 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Modal Overlays for Privacy & Terms */}
+      <AnimatePresence>
+        {showPrivacyModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPrivacyModal(false)}
+              className="absolute inset-0 bg-[#1B244A]/60 backdrop-blur-sm"
+              id="privacy-modal-backdrop"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative bg-white rounded-2xl shadow-2xl border border-[#D0E4E7] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden z-10"
+              id="privacy-modal-container"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-[#E5E2D9] flex items-center justify-between bg-stone-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-[#0FA4AF] rounded-full animate-pulse" />
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#0FA4AF] font-bold block">
+                      Legal Documentation
+                    </span>
+                    <h2 className="font-display font-black text-xl text-[#1B244A]">
+                      HireLens Privacy Policy
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  id="btn-close-privacy"
+                  onClick={() => setShowPrivacyModal(false)}
+                  className="p-1.5 hover:bg-stone-200/70 rounded-full transition-colors cursor-pointer text-stone-500 hover:text-[#1B244A]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="p-6 overflow-y-auto space-y-6 text-sm text-stone-600 leading-relaxed font-sans scrollbar-thin">
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">01</span>
+                    <span>Introduction & Core Scope</span>
+                  </div>
+                  <p>
+                    HireLens (“the Platform”) values and respects your organizational and candidate privacy. This Privacy Policy details the exact mechanisms through which we capture, process, process-anonymize, and utilize evaluation profiles, cognitive alignment metrics, and talent weights to provide context-aware candidate reranking.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">02</span>
+                    <span>Vector Multi-Dimensional Processing</span>
+                  </div>
+                  <p>
+                    Our core evaluation engine transforms candidate professional biographies, project descriptions, and structural DNA profiles into multi-dimensional semantic vector embeddings. All processing is heavily sandboxed. We do not expose candidate resume details or proprietary evaluation telemetry to public generative AI networks or third-party datasets.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">03</span>
+                    <span>Data Retention & Enterprise Sandbox</span>
+                  </div>
+                  <p>
+                    We guarantee that all candidate records submitted through our ingestion portal are housed inside isolated, non-overlapping sandboxes. These records are used exclusively to calculate real-time technical matches, behavioral trajectories, and domain alignments. Your organization retains absolute ownership and control over the submitted profiles and can clear or export them at any moment.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">04</span>
+                    <span>No Demographics Profiling & Bias Stripper</span>
+                  </div>
+                  <p>
+                    To ensure equal opportunity and objective merit-based calibration, HireLens contains specific semantic filters programmed to strip demographic markers, including age, gender, geographic origin, and institutional pedigree, from the ingest stream before vector ranking calculations take place.
+                  </p>
+                </section>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-stone-50 border-t border-[#E5E2D9] flex justify-between items-center text-[10px] text-stone-400 font-mono">
+                <span>Version 2.4.0 (Active Sandboxed Release)</span>
+                <button
+                  id="btn-agree-privacy"
+                  onClick={() => setShowPrivacyModal(false)}
+                  className="px-4 py-2 bg-[#3D52A0] text-white rounded-lg hover:bg-[#2C3E82] transition-colors cursor-pointer font-bold font-sans"
+                >
+                  Acknowledge & Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showTermsModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTermsModal(false)}
+              className="absolute inset-0 bg-[#1B244A]/60 backdrop-blur-sm"
+              id="terms-modal-backdrop"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative bg-white rounded-2xl shadow-2xl border border-[#D0E4E7] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden z-10"
+              id="terms-modal-container"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-[#E5E2D9] flex items-center justify-between bg-stone-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-[#0FA4AF] rounded-full animate-pulse" />
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#0FA4AF] font-bold block">
+                      Platform Terms
+                    </span>
+                    <h2 className="font-display font-black text-xl text-[#1B244A]">
+                      HireLens Terms of Service
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  id="btn-close-terms"
+                  onClick={() => setShowTermsModal(false)}
+                  className="p-1.5 hover:bg-stone-200/70 rounded-full transition-colors cursor-pointer text-stone-500 hover:text-[#1B244A]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="p-6 overflow-y-auto space-y-6 text-sm text-stone-600 leading-relaxed font-sans scrollbar-thin">
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">01</span>
+                    <span>License & Acceptable Usage</span>
+                  </div>
+                  <p>
+                    HireLens grants you a non-transferable, revocable license to access our talent reranking dashboard, adjust metric weight calibrations, and process candidate alignment schemas for corporate recruiting, alignment engineering, and performance auditing purposes.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">02</span>
+                    <span>Interactive Calibrator Responsibilities</span>
+                  </div>
+                  <p>
+                    Our dynamic sliding weight system allows users to allocate emphasis between Technical Match, Behavioral Trajectory, and Domain Alignment. Users agree to utilize these metrics with professional fairness and acknowledge that weight configurations directly govern computed ranking orders.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">03</span>
+                    <span>AI-Assistive Calibration Disclaimer</span>
+                  </div>
+                  <p>
+                    All computed scores, DNA clusters, alignment indexes, and ranking projections are generated using advanced assistive algorithmic architectures. HireLens serves strictly as an assistive evaluation coprocessor. Users acknowledge that final human review and expert validation are indispensable for all qualification evaluations.
+                  </p>
+                </section>
+
+                <section className="space-y-2">
+                  <div className="flex items-center gap-2 text-[#3D52A0] font-bold font-mono text-xs uppercase tracking-wider">
+                    <span className="bg-[#3D52A0]/10 px-2 py-0.5 rounded">04</span>
+                    <span>No Web Scraping or Automated Integrity Violations</span>
+                  </div>
+                  <p>
+                    Users are strictly prohibited from implementing custom automated scraping scripts, reverse engineering our calibration metrics algorithms, or utilizing the platform interface for systematic unauthorized telemetry extraction.
+                  </p>
+                </section>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-stone-50 border-t border-[#E5E2D9] flex justify-between items-center text-[10px] text-stone-400 font-mono">
+                <span>Last Updated: June 2026</span>
+                <button
+                  id="btn-agree-terms"
+                  onClick={() => setShowTermsModal(false)}
+                  className="px-4 py-2 bg-[#3D52A0] text-white rounded-lg hover:bg-[#2C3E82] transition-colors cursor-pointer font-bold font-sans"
+                >
+                  Accept Terms
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
