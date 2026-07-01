@@ -21,6 +21,35 @@ const ai = new GoogleGenAI({
   },
 });
 
+// Helper: robust text-to-JSON generation with auto-retry and exponential backoff
+async function generateContentWithRetry(options: any, maxRetries = 3, initialDelay = 500): Promise<any> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await ai.models.generateContent(options);
+    } catch (error: any) {
+      attempt++;
+      const errorMessage = error?.message || (typeof error === "object" ? JSON.stringify(error) : String(error));
+      const isRetryable = 
+        errorMessage.includes("503") || 
+        errorMessage.includes("500") || 
+        errorMessage.includes("UNAVAILABLE") || 
+        errorMessage.includes("429") || 
+        errorMessage.includes("RESOURCE_EXHAUSTED") || 
+        errorMessage.includes("demand") ||
+        errorMessage.includes("temporary");
+
+      if (isRetryable && attempt < maxRetries) {
+        const delay = initialDelay * Math.pow(2, attempt - 1) * (0.8 + Math.random() * 0.4); // exponential backoff with jitter
+        console.warn(`[Gemini API] Attempt ${attempt} failed with retryable error: ${errorMessage.substring(0, 150)}. Retrying in ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 // Use standard middleware
 app.use(express.json());
 
@@ -354,7 +383,7 @@ app.post("/api/ingest", async (req, res) => {
     ${resumeText}`;
 
     // Agent 1 uses 'gemini-3.5-flash'
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -463,8 +492,13 @@ app.post("/api/rank", async (req, res) => {
     let isFallbackActive = false;
 
     try {
-      const evaluationPrompt = `You are Agent 2: Evaluation Matrix. Your job is deep multi-axis reasoning, conceptual alignment scoring (0-100), and contextual logic verification.
-      Evaluate how well each of the listed candidates matches the Job Specification across three distinct dimensions.
+      const evaluationPrompt = `You are the Coordinator of a Collaborative Consensus Panel of Virtual Specialized Sub-Agents. Your job is deep multi-axis reasoning, cross-verification, conceptual alignment scoring (0-100), and dynamic ranking based on three distinct expert personas:
+
+      1. Virtual Agent A: Chief Systems Architect (Focuses strictly on Tech Stack Compatibility, software complexity, architectural maturity, and the "Ghost Competencies" parsed during ingestion).
+      2. Virtual Agent B: Talent & Behavioral Trajectory Analyst (Focuses strictly on execution velocity, career trajectory, ownership scale, leadership maturity, and project progression).
+      3. Virtual Agent C: Domain Subject Matter Expert (Focuses strictly on industry alignment, business-domain fit, regulatory/technical domain nuance, and practical product-market experience).
+
+      Evaluate how well each of the listed candidates matches the Job Specification across these three specialized dimensions. Let the sub-agents debate and reach a consensus score.
 
       JOB SPECIFICATION:
       ${jobDescription}
@@ -480,10 +514,10 @@ app.post("/api/rank", async (req, res) => {
       `).join("\n\n")}
 
       OUTPUT REQUISITES:
-      Evaluate and return scores from 0 to 100 for each candidate.
-      Provide precise structural justifications for your ratings. Output strict JSON format with an array of evaluations, one for each candidate ID listed above.`;
+      Evaluate and return consensus scores from 0 to 100 for each candidate across the three agent dimensions.
+      Provide precise structural justifications drafted by the respective virtual agent for their rating. Output strict JSON format with an array of evaluations, one for each candidate ID listed above.`;
 
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithRetry({
         model: "gemini-3.5-flash", // Fast & fully accurate for this task, avoiding paid model flow requirements
         contents: evaluationPrompt,
         config: {
