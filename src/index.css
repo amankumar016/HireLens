@@ -126,6 +126,9 @@ input, button, select, textarea {
   animation: float 4s ease-in-out infinite;
 }
 
+ fix-HireLens
+.dark body { background-color: var(--color-sand-900); color: var(--color-sand-100); }
+
 /* Custom Sleek Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 6px;
@@ -177,3 +180,4 @@ input, button, select, textarea {
 }
 
 
+ main

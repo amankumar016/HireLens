@@ -44,6 +44,7 @@ import AnimatedScore from "./components/AnimatedScore";
 import KPIDashboardWidgets from "./components/KPIDashboardWidgets";
 import ComparisonVisualizer from "./components/ComparisonVisualizer";
 import { TiltCard, MagneticWrapper, TextCharReveal, CursorSpotlight, Preloader, CustomCursor, ScrollEngine3D, DynamicMetricsAccordion, InteractiveNavLink } from "./components/KineticInteractions";
+import ThemeToggle from "./components/ThemeToggle";
 
 export default function App() {
   // Application State
@@ -219,30 +220,7 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // Load candidates on mount
-  useEffect(() => {
-    fetchCandidates();
-  }, []);
-
-  const fetchCandidates = async () => {
-    setLoadingCandidates(true);
-    try {
-      const response = await fetch("/api/candidates");
-      const data = await response.json();
-      if (data.success && data.candidates) {
-        setCandidates(data.candidates);
-        if (data.candidates.length > 0) {
-          // Select first candidate by default
-          setSelectedCandidateId(data.candidates[0].id);
-        }
-      }
-    } catch (error) {
-      console.log("Failed to load candidates:", error);
-      setSystemMessage("Could not retrieve candidates. Ensure backend server is running.");
-    } finally {
-      setLoadingCandidates(false);
-    }
-  };
+  
 
   // Perform Agent 2 Multi-Metric scoring across all candidates
   const runEvaluation = async (customWeights = weights) => {
@@ -463,7 +441,37 @@ export default function App() {
       setTimeout(() => setSystemMessage(null), 4000);
     }
   };
+const loadCandidates = async () => {
+  setLoadingCandidates(true);
 
+  try {
+    console.log("Loading candidates...");
+
+    const response = await fetch("/api/candidates");
+    console.log("Response status:", response.status);
+
+    const data = await response.json();
+    console.log("Response data:", data);
+
+    if (data.success && data.candidates) {
+      setCandidates(data.candidates);
+
+      if (data.candidates.length > 0) {
+        setSelectedCandidateId(data.candidates[0].id);
+      }
+    } else {
+      setSystemMessage("No candidates returned.");
+    }
+  } catch (error) {
+    console.error("Failed to load candidates:", error);
+    setSystemMessage("Could not retrieve candidates. Ensure backend server is running.");
+  } finally {
+    setLoadingCandidates(false);
+  }
+};
+useEffect(() => {
+  loadCandidates();
+}, []);
   // Trigger evaluation automatically when the page loads with initial candidates
   useEffect(() => {
     if (candidates.length > 0 && !candidates[0].final_score) {
