@@ -3,18 +3,21 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
-import { runLocalIngestionFallback, runLocalRankingHeuristics } from "./src/backend/utils/fallbacks";
+
 import { INITIAL_CANDIDATES } from "./src/data/candidates";
+import type { Candidate, GhostCompetency, ProjectDNA, SubMetrics, Weights } from "./src/types";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim() || "";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // Initialize Google Gen AI
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
+  apiKey: GEMINI_API_KEY,
   httpOptions: {
     headers: {
       "User-Agent": "aistudio-build",
@@ -24,6 +27,10 @@ const ai = new GoogleGenAI({
 
 // Helper: robust text-to-JSON generation with auto-retry and exponential backoff
 async function generateContentWithRetry(options: any, maxRetries = 3, initialDelay = 500): Promise<any> {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "MY_GEMINI_API_KEY") {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+
   let attempt = 0;
   while (true) {
     try {
@@ -31,12 +38,12 @@ async function generateContentWithRetry(options: any, maxRetries = 3, initialDel
     } catch (error: any) {
       attempt++;
       const errorMessage = error?.message || (typeof error === "object" ? JSON.stringify(error) : String(error));
-      const isRetryable = 
-        errorMessage.includes("503") || 
-        errorMessage.includes("500") || 
-        errorMessage.includes("UNAVAILABLE") || 
-        errorMessage.includes("429") || 
-        errorMessage.includes("RESOURCE_EXHAUSTED") || 
+      const isRetryable =
+        errorMessage.includes("503") ||
+        errorMessage.includes("500") ||
+        errorMessage.includes("UNAVAILABLE") ||
+        errorMessage.includes("429") ||
+        errorMessage.includes("RESOURCE_EXHAUSTED") ||
         errorMessage.includes("demand") ||
         errorMessage.includes("temporary");
 
@@ -52,311 +59,227 @@ async function generateContentWithRetry(options: any, maxRetries = 3, initialDel
 }
 
 // Use standard middleware
-app.use(express.json());
-
-// In-Memory Database for Candidates
-interface AnonymizedProfile {
-  display_identifier: string;
-  college_surrogate: string;
-  summary: string;
-}
-
-interface GhostCompetency {
-  concept: string;
-  confidence: number;
-  justification: string;
-}
-
-interface ProjectDNA {
-  data_flow: "Event-Driven" | "Monolithic CRUD" | "Batch Processing" | "Microservices";
-  scale_footprint: "High-Throughput" | "Low-Latency Real-Time" | "Mass Storage" | "Standard Scale";
-  infrastructure_culture: "Serverless/Cloud-Native" | "Self-Hosted/Kubernetes" | "Bare-Metal";
-}
-
-interface SubMetrics {
-  technical_match_score: number;
-  behavioral_trajectory_score: number;
-  domain_alignment_score: number;
-  reasoning?: {
-    technical?: string;
-    behavioral?: string;
-    domain?: string;
-    overall_summary?: string;
-  };
-}
-
-interface Candidate {
-  id: string;
-  anonymized_profile: AnonymizedProfile;
-  ghost_competencies: GhostCompetency[];
-  project_dna: ProjectDNA;
-  sub_metrics?: SubMetrics;
-  final_score?: number;
-}
+app.use(express.json({ limit: "1mb" }));
 
 // Seed Initial Candidates
 let candidates: Candidate[] = JSON.parse(JSON.stringify(INITIAL_CANDIDATES));
 
+const TECH_KEYWORDS = [
+  "react", "typescript", "javascript", "node", "express", "python", "django", "fastapi",
+  "java", "spring", "go", "golang", "rust", "sql", "postgres", "mysql", "mongodb",
+  "redis", "aws", "azure", "gcp", "docker", "kubernetes", "terraform", "spark",
+  "airflow", "flink", "beam", "ml", "machine learning", "llm", "genai", "rag",
+  "vector", "langchain", "pinecone", "qdrant", "opencv", "pytorch", "huggingface"
+];
 
-// Backend utility functions moved to src/backend/utils/fallbacks.ts
-import { runLocalIngestionFallback, runLocalRankingHeuristics } from "./src/backend/utils/fallbacks";
+const DOMAIN_KEYWORDS = [
+  "finance", "accounting", "retail", "ecommerce", "support", "operations", "marketing",
+  "analytics", "data", "cloud", "devops", "frontend", "backend", "full-stack",
+  "machine learning", "customer", "compliance", "sales", "saas", "consulting"
+];
 
-  const adjectives = ["Quantum", "Kernel", "Async", "Serverless", "Vector", "Distributed", "Reactive", "Linear", "Consensus", "Idempotent", "Zero-Copy", "Telemetry", "Polymorphic", "Event", "Pipeline", "Cluster", "Memory", "Signal"];
-  const nouns = ["Architect", "Crafter", "Weaver", "Maestro", "Refinery", "Forge", "Engine", "Sync", "Mesh", "Node", "Core", "Optimizer", "Shield", "Gateway", "Vault", "Beacon", "Pioneer", "Sentry", "Vanguard"];
-  
-  let preferredAdj = "";
-  let preferredNoun = "";
-  
-  const textLower = resumeText.toLowerCase();
-  if (textLower.includes("rust") || textLower.includes("c++") || textLower.includes("system")) {
-    preferredAdj = "Metal";
-    preferredNoun = "Core";
-  } else if (textLower.includes("kafka") || textLower.includes("stream") || textLower.includes("event")) {
-    preferredAdj = "Async";
-    preferredNoun = "Engine";
-  } else if (textLower.includes("serverless") || textLower.includes("aws") || textLower.includes("lambda")) {
-    preferredAdj = "Serverless";
-    preferredNoun = "Maestro";
-  } else if (textLower.includes("data") || textLower.includes("sql") || textLower.includes("spark")) {
-    preferredAdj = "Vector";
-    preferredNoun = "Refinery";
-  }
-  
-  const adj = preferredAdj || adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = preferredNoun || nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(10 + Math.random() * 89);
-  const displayIdentifier = `${adj} ${noun} ${num}`;
+function clampScore(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
 
-  let collegeSurrogate = "Technical Polytechnic Institute";
-  if (textLower.includes("mit") || textLower.includes("stanford") || textLower.includes("harvard") || textLower.includes("berkeley") || textLower.includes("iit") || textLower.includes("indian institute of technology") || textLower.includes("carnegie") || textLower.includes("cmu") || textLower.includes("cambridge") || textLower.includes("oxford")) {
-    collegeSurrogate = "Elite Tech Institute (Tier 1 Equivalent)";
-  } else if (textLower.includes("university") || textLower.includes("state") || textLower.includes("college")) {
-    collegeSurrogate = "Regional State University";
-  }
+function normalizeWeights(weights?: Partial<Weights>): Weights {
+  const raw = {
+    techStack: Number(weights?.techStack ?? 0.4),
+    trajectory: Number(weights?.trajectory ?? 0.3),
+    domain: Number(weights?.domain ?? 0.3),
+  };
+  const total = raw.techStack + raw.trajectory + raw.domain;
 
-  let summary = "";
-  const cleanText = resumeText.replace(/[\r\n]+/g, " ").trim();
-  if (cleanText.length > 100) {
-    summary = cleanText.substring(0, 250) + "...";
-  } else {
-    summary = "Experienced engineer specializing in high-performance computing, distributed state coordination, and system reliability.";
-  }
-  
-  // Anonymize details to preserve blind sourcing
-  summary = summary.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[email]");
-  summary = summary.replace(/\+?\d[\d-\s()]{7,}\d/g, "[phone]");
-
-  let data_flow: "Event-Driven" | "Monolithic CRUD" | "Batch Processing" | "Microservices" = "Monolithic CRUD";
-  if (textLower.includes("kafka") || textLower.includes("rabbit") || textLower.includes("pubsub") || textLower.includes("stream") || textLower.includes("event-driven") || textLower.includes("websocket")) {
-    data_flow = "Event-Driven";
-  } else if (textLower.includes("microservices") || textLower.includes("grpc") || textLower.includes("docker") || textLower.includes("kubernetes") || textLower.includes("service mesh")) {
-    data_flow = "Microservices";
-  } else if (textLower.includes("batch") || textLower.includes("spark") || textLower.includes("hadoop") || textLower.includes("etl") || textLower.includes("pipeline")) {
-    data_flow = "Batch Processing";
-  }
-
-  let scale_footprint: "High-Throughput" | "Low-Latency Real-Time" | "Mass Storage" | "Standard Scale" = "Standard Scale";
-  if (textLower.includes("throughput") || textLower.includes("millions") || textLower.includes("billions") || textLower.includes("tb") || textLower.includes("petabyte")) {
-    scale_footprint = "High-Throughput";
-  } else if (textLower.includes("latency") || textLower.includes("real-time") || textLower.includes("sub-millisecond") || textLower.includes("microseconds") || textLower.includes("latency")) {
-    scale_footprint = "Low-Latency Real-Time";
-  } else if (textLower.includes("storage") || textLower.includes("database") || textLower.includes("s3") || textLower.includes("postgres") || textLower.includes("mysql") || textLower.includes("elastic")) {
-    scale_footprint = "Mass Storage";
-  }
-
-  let infrastructure_culture: "Serverless/Cloud-Native" | "Self-Hosted/Kubernetes" | "Bare-Metal" = "Bare-Metal";
-  if (textLower.includes("serverless") || textLower.includes("lambda") || textLower.includes("cloud-native") || textLower.includes("aws") || textLower.includes("gcp") || textLower.includes("azure")) {
-    infrastructure_culture = "Serverless/Cloud-Native";
-  } else if (textLower.includes("kubernetes") || textLower.includes("docker") || textLower.includes("self-hosted") || textLower.includes("k8s") || textLower.includes("helm")) {
-    infrastructure_culture = "Self-Hosted/Kubernetes";
-  }
-
-  const ghost_competencies: GhostCompetency[] = [];
-  if (textLower.includes("rust") || textLower.includes("c++") || textLower.includes("performance") || textLower.includes("zero-copy")) {
-    ghost_competencies.push({
-      concept: "Zero-Copy Memory Alignment",
-      confidence: 0.92,
-      justification: "Deduced from system-level memory layout control and performance optimizations found in resume details."
-    });
-  }
-  if (textLower.includes("kafka") || textLower.includes("stream") || textLower.includes("event") || textLower.includes("pub")) {
-    ghost_competencies.push({
-      concept: "Asynchronous Backpressure Control",
-      confidence: 0.89,
-      justification: "Inferred from managing distributed streams and ensuring continuous delivery without state collapse."
-    });
-  }
-  if (textLower.includes("kubernetes") || textLower.includes("docker") || textLower.includes("microservice") || textLower.includes("grpc")) {
-    ghost_competencies.push({
-      concept: "Service Mesh Routing Topologies",
-      confidence: 0.91,
-      justification: "Required to coordinate secure service-to-service communication profiles across virtual clusters."
-    });
-  }
-  if (textLower.includes("database") || textLower.includes("sql") || textLower.includes("postgres") || textLower.includes("index")) {
-    ghost_competencies.push({
-      concept: "Relational Query Plan Optimization",
-      confidence: 0.86,
-      justification: "Inferred from data access patterns, indexing strategies, and database scalability efforts."
-    });
-  }
-  if (textLower.includes("aws") || textLower.includes("serverless") || textLower.includes("lambda")) {
-    ghost_competencies.push({
-      concept: "Idempotency Coordination",
-      confidence: 0.93,
-      justification: "Essential for securing serverless operations and preventing duplicate side-effects across distributed retry blocks."
-    });
-  }
-
-  if (ghost_competencies.length < 2) {
-    ghost_competencies.push({
-      concept: "Actor Concurrency Mechanics",
-      confidence: 0.85,
-      justification: "Required for robust multi-threaded or distributed lock-free operations."
-    });
-    ghost_competencies.push({
-      concept: "Distributed Consensus Modeling",
-      confidence: 0.81,
-      justification: "Implicit in coordinating state replication and leader elections across multiple worker nodes."
-    });
+  if (!Number.isFinite(total) || total <= 0) {
+    return { techStack: 0.4, trajectory: 0.3, domain: 0.3 };
   }
 
   return {
-    id: `cand-local-${Date.now()}`,
-    anonymized_profile: {
-      display_identifier: displayIdentifier,
-      college_surrogate: collegeSurrogate,
-      summary: summary,
-    },
-    ghost_competencies: ghost_competencies.slice(0, 3),
-    project_dna: {
-      data_flow,
-      scale_footprint,
-      infrastructure_culture,
-    }
+    techStack: raw.techStack / total,
+    trajectory: raw.trajectory / total,
+    domain: raw.domain / total,
   };
 }
 
-// Helper Function: Local Candidate Ranking Heuristics (Failsafe Fallback)
-function runLocalRankingHeuristics(jobDescription: string, candidatesList: Candidate[], weights: any): Candidate[] {
-  const wTech = weights?.techStack ?? 0.4;
-  const wBehavior = weights?.trajectory ?? 0.3;
-  const wDomain = weights?.domain ?? 0.3;
-
-  const jdLower = jobDescription.toLowerCase();
-
-  return candidatesList.map((candidate) => {
-    let techScore = 65;
-    
-    const techKeywords = [
-      { term: "event-driven", match: candidate.project_dna.data_flow === "Event-Driven" },
-      { term: "microservices", match: candidate.project_dna.data_flow === "Microservices" },
-      { term: "batch", match: candidate.project_dna.data_flow === "Batch Processing" },
-      { term: "cloud-native", match: candidate.project_dna.infrastructure_culture === "Serverless/Cloud-Native" },
-      { term: "serverless", match: candidate.project_dna.infrastructure_culture === "Serverless/Cloud-Native" },
-      { term: "kubernetes", match: candidate.project_dna.infrastructure_culture === "Self-Hosted/Kubernetes" },
-      { term: "docker", match: candidate.project_dna.infrastructure_culture === "Self-Hosted/Kubernetes" },
-      { term: "low latency", match: candidate.project_dna.scale_footprint === "Low-Latency Real-Time" },
-      { term: "throughput", match: candidate.project_dna.scale_footprint === "High-Throughput" },
-      { term: "storage", match: candidate.project_dna.scale_footprint === "Mass Storage" },
-    ];
-
-    techKeywords.forEach(({ term, match }) => {
-      if (jdLower.includes(term)) {
-        techScore += match ? 12 : 3;
-      }
-    });
-
-    candidate.ghost_competencies.forEach((comp) => {
-      const compLower = comp.concept.toLowerCase();
-      const words = compLower.split(/\s+/);
-      let compMatch = false;
-      words.forEach((word) => {
-        if (word.length > 3 && jdLower.includes(word)) {
-          compMatch = true;
-        }
-      });
-      if (compMatch) {
-        techScore += 8;
-      }
-    });
-
-    techScore = Math.min(98, Math.max(50, techScore));
-
-    let behavioralScore = 70;
-    const summaryLower = candidate.anonymized_profile.summary.toLowerCase();
-    
-    const behaviorKeywords = [
-      { term: "lead", weight: 6 },
-      { term: "spearheaded", weight: 8 },
-      { term: "designed", weight: 5 },
-      { term: "optimized", weight: 5 },
-      { term: "rewrote", weight: 7 },
-      { term: "scaled", weight: 6 },
-      { term: "architected", weight: 8 },
-      { term: "zero-copy", weight: 6 },
-      { term: "concurrency", weight: 5 },
-    ];
-
-    behaviorKeywords.forEach(({ term, weight }) => {
-      if (summaryLower.includes(term) || jdLower.includes(term)) {
-        behavioralScore += weight;
-      }
-    });
-
-    behavioralScore = Math.min(96, Math.max(55, behavioralScore));
-
-    let domainScore = 65;
-    
-    const domainKeywords = [
-      { terms: ["finance", "payment", "spend", "transaction"], weight: 10 },
-      { terms: ["database", "storage", "sql", "postgres", "mysql", "columnar", "s3"], weight: 8 },
-      { terms: ["stream", "analytics", "real-time", "kafka", "latency", "streaming"], weight: 9 },
-      { terms: ["kubernetes", "mesh", "cluster", "cloud", "aws", "gcp"], weight: 7 },
-    ];
-
-    domainKeywords.forEach(({ terms, weight }) => {
-      const hasJdTerm = terms.some(t => jdLower.includes(t));
-      const hasCandTerm = terms.some(t => summaryLower.includes(t) || candidate.ghost_competencies.some((c) => c.concept.toLowerCase().includes(t)));
-      if (hasJdTerm && hasCandTerm) {
-        domainScore += weight + 5;
-      } else if (hasJdTerm || hasCandTerm) {
-        domainScore += 3;
-      }
-    });
-
-    domainScore = Math.min(95, Math.max(50, domainScore));
-
-    const finalScore = Math.round(
-      (techScore * wTech) +
-      (behavioralScore * wBehavior) +
-      (domainScore * wDomain)
-    );
-
-    const metrics = {
-      technical_match_score: techScore,
-      behavioral_trajectory_score: behavioralScore,
-      domain_alignment_score: domainScore,
-      reasoning: {
-        technical: `Candidate matches the requested ${candidate.project_dna.data_flow} flow and utilizes ${candidate.project_dna.infrastructure_culture} infrastructure culture to align with job technical specifications. Competencies: ${candidate.ghost_competencies.map((c) => c.concept).join(", ")}.`,
-        behavioral: `Summary indicates strong execution with focus on: "${candidate.anonymized_profile.summary.substring(0, 80)}...". Demonstrates clear trajectory of solving deep scalability constraints.`,
-        domain: `Project DNA aligns with ${candidate.project_dna.scale_footprint} scalability demands. Domain alignment is solid based on core competencies.`,
-        overall_summary: `Candidate evaluated via the high-fidelity local deterministic engine (activated due to remote API rate limits). They exhibit a ${finalScore}% alignment across all core dimensions.`
-      }
-    };
-
-    return {
-      ...candidate,
-      sub_metrics: metrics,
-      final_score: finalScore,
-    };
-  });
+function countKeywordMatches(text: string, keywords: string[]): number {
+  const lower = text.toLowerCase();
+  return keywords.reduce((total, keyword) => total + (lower.includes(keyword) ? 1 : 0), 0);
 }
 
-// Endpoint: Fetch Candidates
+function getMatchedKeywords(text: string, keywords: string[]): string[] {
+  const lower = text.toLowerCase();
+  return keywords.filter((keyword) => lower.includes(keyword));
+}
+
+function buildCandidateCorpus(candidate: Candidate): string {
+  return [
+    candidate.anonymized_profile.display_identifier,
+    candidate.anonymized_profile.college_surrogate,
+    candidate.anonymized_profile.summary,
+    candidate.project_dna.data_flow,
+    candidate.project_dna.scale_footprint,
+    candidate.project_dna.infrastructure_culture,
+    ...candidate.ghost_competencies.map((item) => `${item.concept} ${item.justification}`),
+  ].join(" ");
+}
+
+function inferProjectDNA(text: string): ProjectDNA {
+  const lower = text.toLowerCase();
+
+  const data_flow: ProjectDNA["data_flow"] =
+    /microservice|service mesh|distributed/.test(lower) ? "Microservices" :
+    /stream|event|kafka|realtime|real-time|queue/.test(lower) ? "Event-Driven" :
+    /batch|etl|warehouse|airflow|spark/.test(lower) ? "Batch Processing" :
+    "Monolithic CRUD";
+
+  const scale_footprint: ProjectDNA["scale_footprint"] =
+    /latency|real-time|realtime|edge/.test(lower) ? "Low-Latency Real-Time" :
+    /warehouse|lake|storage|terabyte|million|mass/.test(lower) ? "Mass Storage" :
+    /scale|throughput|distributed|kafka|spark|high-volume/.test(lower) ? "High-Throughput" :
+    "Standard Scale";
+
+  const infrastructure_culture: ProjectDNA["infrastructure_culture"] =
+    /kubernetes|k8s|helm|self-hosted/.test(lower) ? "Self-Hosted/Kubernetes" :
+    /bare.?metal|on-prem|datacenter/.test(lower) ? "Bare-Metal" :
+    "Serverless/Cloud-Native";
+
+  return { data_flow, scale_footprint, infrastructure_culture };
+}
+
+function extractCompetencies(text: string): GhostCompetency[] {
+  const lower = text.toLowerCase();
+  const matches = TECH_KEYWORDS
+    .filter((keyword) => lower.includes(keyword))
+    .slice(0, 3)
+    .map((keyword, index) => ({
+      concept: keyword.replace(/\b\w/g, (char) => char.toUpperCase()),
+      confidence: Math.max(0.72, 0.9 - index * 0.05),
+      justification: `Inferred from explicit resume evidence mentioning ${keyword} and related delivery context.`,
+    }));
+
+  if (matches.length > 0) {
+    return matches;
+  }
+
+  return [
+    {
+      concept: "Structured Problem Solving",
+      confidence: 0.76,
+      justification: "Inferred from the candidate narrative and project-oriented experience details.",
+    },
+    {
+      concept: "Cross-Functional Execution",
+      confidence: 0.72,
+      justification: "Inferred from responsibilities spanning stakeholders, delivery, and operational outcomes.",
+    },
+    {
+      concept: "Systems Thinking",
+      confidence: 0.7,
+      justification: "Inferred from end-to-end ownership language in the submitted profile.",
+    },
+  ];
+}
+
+function runLocalIngestionFallback(resumeText: string): Candidate {
+  const words = resumeText.trim().split(/\s+/);
+  const competencies = extractCompetencies(resumeText);
+  const primaryConcept = competencies[0]?.concept || "Systems";
+  const suffix = Math.abs([...resumeText].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 100;
+
+  return {
+    id: `cand-${Date.now()}`,
+    anonymized_profile: {
+      display_identifier: `${primaryConcept.replace(/[^A-Za-z]/g, "").slice(0, 10) || "Signal"} Builder ${suffix}`,
+      college_surrogate: /iit|nit|bits|stanford|mit|tier.?1/i.test(resumeText)
+        ? "Tier-1 Technical Institute"
+        : /university|college|institute/i.test(resumeText)
+          ? "Regional Technical Institute"
+          : "Experience-Led Talent Profile",
+      summary: words.slice(0, 55).join(" ") + (words.length > 55 ? "..." : ""),
+    },
+    ghost_competencies: competencies,
+    project_dna: inferProjectDNA(resumeText),
+  };
+}
+
+function evaluateCandidateLocally(candidate: Candidate, jobDescription: string, weights?: Partial<Weights>): Candidate {
+  const normalizedWeights = normalizeWeights(weights);
+  const candidateCorpus = buildCandidateCorpus(candidate);
+  const jobTechKeywords = getMatchedKeywords(jobDescription, TECH_KEYWORDS);
+  const candidateTechKeywords = getMatchedKeywords(candidateCorpus, TECH_KEYWORDS);
+  const jobDomainKeywords = getMatchedKeywords(jobDescription, DOMAIN_KEYWORDS);
+  const candidateDomainKeywords = getMatchedKeywords(candidateCorpus, DOMAIN_KEYWORDS);
+  const technicalOverlap = candidateTechKeywords.filter((keyword) => jobTechKeywords.includes(keyword));
+  const domainOverlap = candidateDomainKeywords.filter((keyword) => jobDomainKeywords.includes(keyword));
+
+  const avgConfidence = candidate.ghost_competencies.length
+    ? candidate.ghost_competencies.reduce((sum, item) => sum + item.confidence, 0) / candidate.ghost_competencies.length
+    : 0.72;
+
+  const dnaBonus = /event|stream|queue|real.?time/i.test(jobDescription) && candidate.project_dna.data_flow === "Event-Driven"
+    ? 7
+    : /microservice|distributed|service/i.test(jobDescription) && candidate.project_dna.data_flow === "Microservices"
+      ? 7
+      : /batch|etl|warehouse|pipeline/i.test(jobDescription) && candidate.project_dna.data_flow === "Batch Processing"
+        ? 6
+        : 0;
+
+  const infraBonus = /kubernetes|k8s|container/i.test(jobDescription) && candidate.project_dna.infrastructure_culture === "Self-Hosted/Kubernetes"
+    ? 6
+    : /aws|cloud|serverless/i.test(jobDescription) && candidate.project_dna.infrastructure_culture === "Serverless/Cloud-Native"
+      ? 5
+      : 0;
+
+  const technical = clampScore(45 + technicalOverlap.length * 10 + candidateTechKeywords.length * 2 + avgConfidence * 10 + dnaBonus + infraBonus);
+  const behavioral = clampScore(
+    58 +
+    (/lead|owner|managed|architect|senior|scale|stakeholder|delivered/i.test(candidateCorpus) ? 14 : 5) +
+    (/year|yrs|experience|\d\+/.test(candidateCorpus) ? 8 : 0)
+  );
+  const domain = clampScore(48 + domainOverlap.length * 11 + candidateDomainKeywords.length * 2 + dnaBonus);
+
+  const sub_metrics: SubMetrics = {
+    technical_match_score: technical,
+    behavioral_trajectory_score: behavioral,
+    domain_alignment_score: domain,
+    reasoning: {
+      technical: `Local heuristic matched ${technicalOverlap.length} requested technical signal(s): ${technicalOverlap.join(", ") || "none"}.`,
+      behavioral: "Local heuristic estimated ownership and execution maturity from experience and responsibility signals.",
+      domain: `Local heuristic matched ${domainOverlap.length} requested domain signal(s): ${domainOverlap.join(", ") || "none"}.`,
+      overall_summary: "Generated by the deterministic fallback evaluator because the AI service was unavailable or returned no usable scores.",
+    },
+  };
+
+  return {
+    ...candidate,
+    sub_metrics,
+    final_score: clampScore(
+      technical * normalizedWeights.techStack +
+      behavioral * normalizedWeights.trajectory +
+      domain * normalizedWeights.domain
+    ),
+  };
+}
+
+function runLocalRankingHeuristics(jobDescription: string, targetCandidates: Candidate[], weights?: Partial<Weights>): Candidate[] {
+  return targetCandidates.map((candidate) => evaluateCandidateLocally(candidate, jobDescription, weights));
+}
+
+// Endpoint: Return the active in-memory candidate set
 app.get("/api/candidates", (req, res) => {
   res.json({ success: true, candidates });
 });
+
+// Endpoint: Basic server status for smoke checks and hosting probes
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    candidates: candidates.length,
+    aiConfigured: Boolean(GEMINI_API_KEY && GEMINI_API_KEY !== "MY_GEMINI_API_KEY"),
+  });
+});
+
 
 // Endpoint: Reset Candidates to seed values
 app.post("/api/candidates/reset", (req, res) => {
@@ -385,9 +308,9 @@ app.post("/api/ingest", async (req, res) => {
     CANDIDATE TEXT:
     ${resumeText}`;
 
-    // Agent 1 uses 'gemini-3.5-flash'
+    // Agent 1 asks Gemini for structured JSON; local fallback handles unavailable AI.
     const response = await generateContentWithRetry({
-      model: "gemini-3.5-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -521,7 +444,7 @@ app.post("/api/rank", async (req, res) => {
       Provide precise structural justifications drafted by the respective virtual agent for their rating. Output strict JSON format with an array of evaluations, one for each candidate ID listed above.`;
 
       const response = await generateContentWithRetry({
-        model: "gemini-3.5-flash", // Fast & fully accurate for this task, avoiding paid model flow requirements
+        model: GEMINI_MODEL,
         contents: evaluationPrompt,
         config: {
           responseMimeType: "application/json",
@@ -646,9 +569,9 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[HireLens Server] active on http://0.0.0.0:${PORT}`);
-  });
+ app.listen(PORT, "127.0.0.1", () => {
+  console.log(`[HireLens Server] active on http://localhost:${PORT}`);
+});
 }
 
 startServer();
