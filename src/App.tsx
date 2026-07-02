@@ -657,65 +657,81 @@ export default function App() {
       </AnimatePresence>
 
       {/* Top Navigation Bar - Styled like clean Editions Bar */}
-      <nav id="navbar-main" className="border-b border-[#E5E2D9] px-6 lg:px-10 py-4 lg:py-3.5 flex flex-col sm:flex-row justify-between items-center bg-[#F4F3F7]/80 backdrop-blur sticky top-0 z-40 gap-4">
-        <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setCurrentPage("landing")}>
-          <div className="w-9 h-9 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/20">
-            <div className="w-4 h-4 border-2 border-[#EDE8F5] rounded-md rotate-45" />
+      <nav id="navbar-main" className="border-b border-[#E5E2D9]/80 px-6 lg:px-10 py-3 lg:py-2.5 flex flex-col md:flex-row justify-between items-center bg-[#F4F3F7]/85 backdrop-blur-md sticky top-0 z-40 gap-4 transition-all duration-300">
+        <div className="flex items-center gap-3 cursor-pointer select-none group" onClick={() => setCurrentPage("landing")}>
+          <div className="w-9 h-9 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/15 group-hover:scale-105 transition-transform duration-300">
+            <Search className="w-4.5 h-4.5 text-[#EDE8F5] stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display font-extrabold text-sm tracking-tight uppercase text-[#1B244A]">
+              <span className="font-display font-black text-sm tracking-tight uppercase text-[#1B244A] group-hover:text-[#3D52A0] transition-colors duration-300">
                 HireLens
               </span>
             </div>
-            <p className="text-[10px] text-[#8697C4] font-sans tracking-wide">
+            <p className="text-[9px] text-[#8697C4] font-sans font-medium tracking-wide">
               Architectural Candidate Assessment & Alignment Hub
             </p>
           </div>
         </div>
 
-        {/* Navigation Center Links - Multi-page router */}
-        <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-[#8697C4]">
-          <button
-            onClick={() => setCurrentPage("landing")}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
-              currentPage === "landing"
-                ? "bg-[#3D52A0] text-white shadow-xs"
-                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
-            }`}
-          >
-            Portal Home
-          </button>
-          <button
-            onClick={() => setCurrentPage("ingestion")}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
-              currentPage === "ingestion"
-                ? "bg-[#3D52A0] text-white shadow-xs"
-                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
-            }`}
-          >
-            1. Resume Ingestion
-          </button>
-          <button
-            onClick={() => setCurrentPage("ranking")}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
-              currentPage === "ranking"
-                ? "bg-[#3D52A0] text-white shadow-xs"
-                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
-            }`}
-          >
-            2. Calibration & Alignment
-          </button>
-          <button
-            onClick={() => setCurrentPage("analytics")}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer font-sans font-semibold ${
-              currentPage === "analytics"
-                ? "bg-[#3D52A0] text-white shadow-xs"
-                : "hover:bg-stone-200/50 text-[#1B244A]/80 hover:text-[#1B244A]"
-            }`}
-          >
-            3. Talent Analytics
-          </button>
+        {/* Navigation Center Links - Modern Sliding Pill Selector */}
+        <div className="hidden lg:flex items-center gap-1 bg-stone-200/40 p-1 rounded-2xl border border-stone-200/60 text-xs font-medium">
+          {[
+            { id: "landing", label: "Portal Home" },
+            { id: "ingestion", label: "1. Resume Ingestion" },
+            { id: "ranking", label: "2. Calibration & Alignment" },
+            { id: "analytics", label: "3. Talent Analytics" }
+          ].map((tab) => {
+            const isActive = currentPage === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentPage(tab.id as any)}
+                className={`relative px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors duration-300 cursor-pointer ${
+                  isActive ? "text-[#1B244A]" : "text-[#1B244A]/60 hover:text-[#1B244A]"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-tab-nav"
+                    className="absolute inset-0 bg-white shadow-xs border border-stone-200/50 rounded-xl -z-10"
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                  />
+                )}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Navigation Center Links - Mobile Scrollable Strip */}
+        <div className="flex lg:hidden items-center gap-1 bg-stone-200/30 p-1 rounded-xl border border-stone-200/40 text-xs font-medium overflow-x-auto max-w-full no-scrollbar">
+          {[
+            { id: "landing", label: "Home" },
+            { id: "ingestion", label: "1. Ingest" },
+            { id: "ranking", label: "2. Calibrate" },
+            { id: "analytics", label: "3. Analytics" }
+          ].map((tab) => {
+            const isActive = currentPage === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentPage(tab.id as any)}
+                className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold font-sans whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+                  isActive ? "text-[#1B244A]" : "text-[#1B244A]/50 hover:text-[#1B244A]"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-tab-nav-mobile"
+                    className="absolute inset-0 bg-white shadow-xs border border-stone-200/50 rounded-lg -z-10"
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                  />
+                )}
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Global Controls */}
@@ -723,15 +739,15 @@ export default function App() {
           <button
             id="reset-db-btn"
             onClick={resetDatabase}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 border border-[#E5E2D9] active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200/80 border border-[#E5E2D9] active:scale-95 hover:scale-102 hover:shadow-xs transition-all cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
             Reset Seed
           </button>
           
           <div className="h-4 w-[1px] bg-stone-300" />
 
-          <div className="flex items-center gap-2 text-[10px] font-mono bg-[#024950]/5 border border-[#024950]/20 px-3 py-1.5 rounded-xl text-[#024950]">
+          <div className="flex items-center gap-2 text-[10px] font-mono bg-[#024950]/5 border border-[#024950]/15 px-3 py-1.5 rounded-xl text-[#024950] hover:bg-[#024950]/10 transition-colors">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             <span className="font-bold">{processedCandidates.length}</span> Active Profiles
           </div>
@@ -748,9 +764,13 @@ export default function App() {
 
         <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
           {/* Top Info Tag */}
-          <div className="flex items-center gap-2 mb-6 animate-slide-in">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-[#0FA4AF] font-bold">
-              HireLens-First Talent Ingestion & Calibration Release
+          <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full bg-[#0FA4AF]/10 border border-[#0FA4AF]/20 shadow-xs backdrop-blur-xs select-none">
+            <span className="flex h-1.5 w-1.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0FA4AF] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#024950]"></span>
+            </span>
+            <span className="text-[9px] uppercase font-mono tracking-widest text-[#024950] font-bold">
+              HireLens-First Talent Ingestion & Calibration Engine
             </span>
           </div>
 
@@ -788,7 +808,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
-                className="flex items-center gap-3"
+                className="flex flex-wrap items-center gap-3 mt-2 md:mt-0"
               >
                 <MagneticWrapper pullFactor={0.25}>
                   <a 
@@ -810,7 +830,7 @@ export default function App() {
                   </button>
                 </MagneticWrapper>
                 <MagneticWrapper pullFactor={0.25}>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <button
                       id="hero-ghost-mode-toggle"
                       onClick={() => setGhostMode(!ghostMode)}
@@ -1804,9 +1824,26 @@ export default function App() {
             </AnimatePresence>
 
             {loadingCandidates ? (
-              <div className="py-20 flex flex-col items-center justify-center gap-3">
-                <RefreshCw className="w-8 h-8 text-[#3D52A0] animate-spin" />
-                <p className="text-xs font-mono text-stone-500">Retrieving system index...</p>
+              <div className="space-y-3 p-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-4 rounded-2xl border border-stone-150 bg-white/60 animate-pulse flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-stone-200" />
+                      <div className="space-y-2">
+                        <div className="w-32 h-3.5 bg-stone-200 rounded-md" />
+                        <div className="w-20 h-2.5 bg-stone-150 rounded-md" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-5 bg-stone-200 rounded-full" />
+                      <div className="w-4 h-4 bg-stone-150 rounded" />
+                    </div>
+                  </div>
+                ))}
+                <div className="py-4 text-center text-xs font-mono text-stone-400 flex items-center justify-center gap-2 bg-[#FDFCF8]/30 border border-stone-100 rounded-xl">
+                  <RefreshCw className="w-3 h-3 text-[#3D52A0] animate-spin" />
+                  <span>Retrieving system index and aligning vectors...</span>
+                </div>
               </div>
             ) : (
               <>
@@ -2009,7 +2046,29 @@ export default function App() {
                 </div>
 
                 {/* Desktop & Tablet Table with Horizontal Scrolling wrapper */}
-                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm max-h-[62vh]">
+                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm max-h-[62vh] relative">
+                  <AnimatePresence>
+                    {rankingInProgress && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-[#FDFCF8]/65 backdrop-blur-xs flex flex-col items-center justify-center z-10 gap-4"
+                      >
+                        <div className="p-5 bg-white rounded-3xl shadow-xl border border-[#E5E2D9] flex flex-col items-center gap-3 max-w-sm text-center">
+                          <div className="relative flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full border-2 border-indigo-100 border-t-[#3D52A0] animate-spin" />
+                            <Sparkles className="w-4 h-4 text-indigo-500 absolute animate-pulse" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold font-display text-[#1B244A] uppercase tracking-wider">Calibration in Progress</h4>
+                            <p className="text-[10px] font-mono text-stone-500 mt-1 h-8 flex items-center justify-center leading-normal">{rankingStep}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <table className="w-full text-left border-collapse table-auto bg-white rounded-xl overflow-hidden border border-stone-150/60">
                     <thead className="bg-stone-50/80">
                       <tr className="text-stone-500 text-[10px] font-mono uppercase tracking-wider border-b border-[#E5E2D9]">
@@ -2612,7 +2671,14 @@ export default function App() {
             ) : (
               // STANDARD SINGLE CANDIDATE DEEP DIVE
               selectedCandidate ? (
-                <div id="alignment-matrix-panel" className="space-y-6">
+                <motion.div
+                  key={selectedCandidate.id}
+                  id="alignment-matrix-panel"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="space-y-6"
+                >
                   
                   {/* Inform user they can compare */}
                   {compareCandidateIds.length === 1 && (
@@ -2778,7 +2844,7 @@ export default function App() {
                     <DNAClusterView candidate={selectedCandidate} />
                   </div>
 
-                </div>
+                </motion.div>
               ) : (
                 <div className="py-20 flex flex-col items-center justify-center text-center text-stone-400 gap-2">
                   <User className="w-8 h-8 opacity-60" />

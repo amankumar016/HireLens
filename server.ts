@@ -520,7 +520,7 @@ app.post("/api/rank", async (req, res) => {
       Provide precise structural justifications drafted by the respective virtual agent for their rating.`;
 
       let responseText = "";
-      let usedModel = "gemini-3.1-pro-preview";
+      let usedModel = "gemini-3.5-flash";
 
       const systemInstructionText = "You are the Coordinator of a Collaborative Consensus Panel of Virtual Specialized Sub-Agents. Your job is deep multi-axis reasoning, cross-verification, conceptual alignment scoring (0-100), and dynamic ranking based on three distinct expert personas:\n\n1. Virtual Agent A: Chief Systems Architect (Focuses strictly on Tech Stack Compatibility, software complexity, architectural maturity, and the 'Ghost Competencies' parsed during ingestion).\n2. Virtual Agent B: Talent & Behavioral Trajectory Analyst (Focuses strictly on execution velocity, career trajectory, ownership scale, leadership maturity, and project progression).\n3. Virtual Agent C: Domain Subject Matter Expert (Focuses strictly on industry alignment, business-domain fit, regulatory/technical domain nuance, and practical product-market experience).\n\nRate candidate fit objectively using detailed consensus math. Provide constructive, precise justifications for all sub-scores, and keep your overall evaluations highly logical, strict, and precise. Return a JSON object with an evaluations array, one element for each candidate ID evaluated.";
 
@@ -556,23 +556,7 @@ app.post("/api/rank", async (req, res) => {
       };
 
       try {
-        console.log("[Ranking] Attempting precision evaluation with primary model: gemini-3.1-pro-preview...");
-        const response = await generateContentWithRetry({
-          model: "gemini-3.1-pro-preview",
-          contents: evaluationPrompt,
-          config: {
-            systemInstruction: systemInstructionText,
-            temperature: 0.1,
-            topP: 0.95,
-            responseMimeType: "application/json",
-            responseSchema: responseSchemaConfig,
-          },
-        });
-        responseText = response.text || "{}";
-        console.log("[Ranking] Evaluation completed using gemini-3.1-pro-preview successfully.");
-      } catch (proErr: any) {
-        console.warn("[Ranking] Primary model (gemini-3.1-pro-preview) failed or unavailable. Falling back to gemini-3.5-flash. Details:", proErr?.message || proErr);
-        usedModel = "gemini-3.5-flash";
+        console.log("[Ranking] Starting consensus panel evaluation using gemini-3.5-flash...");
         const response = await generateContentWithRetry({
           model: "gemini-3.5-flash",
           contents: evaluationPrompt,
@@ -585,7 +569,10 @@ app.post("/api/rank", async (req, res) => {
           },
         });
         responseText = response.text || "{}";
-        console.log("[Ranking] Evaluation completed using gemini-3.5-flash fallback successfully.");
+        console.log("[Ranking] Consensus panel evaluation completed successfully using gemini-3.5-flash.");
+      } catch (err: any) {
+        console.warn("[Ranking] Consensus panel failed on gemini-3.5-flash. Details:", err?.message || err);
+        throw err; // Trigger outer catch to run local ranking heuristics fallback
       }
 
       const parsedRes = JSON.parse(responseText);
