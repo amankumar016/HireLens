@@ -2877,39 +2877,99 @@ export default function App() {
       )}
 
       {/* Footer System Architecture Info */}
-      <footer className="border-t border-[#E5E2D9] py-8 px-6 bg-stone-50 text-center text-xs text-stone-500 font-mono mt-10" id="app-footer">
-        <div className="max-w-[1440px] mx-auto flex flex-col lg:flex-row justify-between items-center gap-6 px-6 lg:px-10">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 bg-[#3D52A0] rounded-full" />
-            <span>Operational System Topology: Node 'HireLens' Online</span>
-          </div>
-          
-          {/* Privacy Policy & Terms Links */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-stone-600">
-            <button
-              id="footer-privacy-link"
-              onClick={() => setShowPrivacyModal(true)}
-              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
-            >
-              Privacy Policy
-            </button>
-            <span className="text-stone-300">|</span>
-            <button
-              id="footer-terms-link"
-              onClick={() => setShowTermsModal(true)}
-              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
-            >
-              Terms of Service
-            </button>
+      <footer className="border-t border-[#E5E2D9] pt-12 pb-10 px-6 bg-gradient-to-b from-[#F4F3F7]/50 to-[#EAE8F0] mt-16 text-xs text-stone-500 font-sans" id="app-footer">
+        <div className="max-w-[1440px] mx-auto">
+          {/* Main Footer Layout Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-[#E5E2D9]/60">
+            
+            {/* Branding & Vision Column */}
+            <div className="md:col-span-5 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/10">
+                  <Search className="w-4 h-4 text-[#EDE8F5]" />
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm tracking-tight uppercase text-[#1B244A]">
+                    HireLens
+                  </span>
+                  <p className="text-[10px] text-[#8697C4] font-medium tracking-wide">
+                    Consensus Alignment Engine
+                  </p>
+                </div>
+              </div>
+              
+              <p className="text-stone-600/90 text-[11px] leading-relaxed max-w-sm">
+                Next-generation collaborative consensus platform for multi-axis candidate capability alignment, cognitive profile mapping, and automated talent telemetry.
+              </p>
+
+              {/* Real-time Status Pill */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#024950]/5 border border-[#024950]/15 rounded-lg text-[10px] font-mono text-[#024950] font-medium">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span>Core Node Status: Operational System Online</span>
+              </div>
+            </div>
+
+            {/* Platform Controls & Policies Column */}
+            <div className="md:col-span-3 space-y-3">
+              <h4 className="text-[10px] uppercase font-mono tracking-wider text-stone-500 font-bold">Compliance & Safety</h4>
+              <ul className="space-y-2 text-[11px] font-medium">
+                <li>
+                  <button
+                    id="footer-privacy-link"
+                    onClick={() => setShowPrivacyModal(true)}
+                    className="flex items-center gap-2 text-stone-600 hover:text-[#3D52A0] transition-colors cursor-pointer py-1 text-left w-full group"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#0FA4AF] group-hover:scale-110 transition-transform" />
+                    <span>Candidate Privacy Policy</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    id="footer-terms-link"
+                    onClick={() => setShowTermsModal(true)}
+                    className="flex items-center gap-2 text-stone-600 hover:text-[#3D52A0] transition-colors cursor-pointer py-1 text-left w-full group"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#0FA4AF] group-hover:scale-110 transition-transform" />
+                    <span>Terms of System Telemetry</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Neural Matrix & Agents Config Column */}
+            <div className="md:col-span-4 space-y-3">
+              <h4 className="text-[10px] uppercase font-mono tracking-wider text-stone-500 font-bold">Consensus Agents Configuration</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-white/60 border border-stone-200/50 text-[10px] font-mono">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#3D52A0] rounded-full" />
+                    <span className="text-stone-700 font-bold">Panel Coordinator</span>
+                  </div>
+                  <span className="text-[#8697C4]">gemini-3.5-flash</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-lg bg-white/60 border border-stone-200/50 text-[10px] font-mono">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#0FA4AF] rounded-full" />
+                    <span className="text-stone-700 font-bold">Evaluators Consensus</span>
+                  </div>
+                  <span className="text-[#8697C4]">Unified 3.5 Model Stack</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <div className="flex items-center gap-4">
-            <span>Agent 1: gemini-2.5-flash</span>
-            <div className="w-1.5 h-1.5 bg-stone-400 rounded-full" />
-            <span>Agent 2: gemini-2.5-flash</span>
-          </div>
-          <div>
-            <span>© 2026 HireLens. All rights reserved.</span>
+          {/* Sub Footer Row */}
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono text-stone-400">
+            <div>
+              <span>© 2026 HireLens. Precision Orchestrated Assessments. All rights reserved.</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <span>Optimized with</span>
+              <Heart className="w-3 h-3 text-rose-500 animate-pulse fill-rose-500" />
+              <span>for Enterprise Talent Operations</span>
+            </div>
           </div>
         </div>
       </footer>
