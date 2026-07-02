@@ -365,16 +365,17 @@ export default function InteractiveTalentChart({
                       <>
                         {/* Outermost sweeping radar glow pulse */}
                         <motion.circle
-                          cx={cx}
-                          cy={cy}
                           animate={{
+                            cx,
+                            cy,
                             r: [radius + 4, radius + 22, radius + 4],
                             opacity: [0.5, 0, 0.5]
                           }}
                           transition={{
-                            duration: 2.4,
-                            repeat: Infinity,
-                            ease: "easeInOut"
+                            cx: { type: "spring", stiffness: 100, damping: 17 },
+                            cy: { type: "spring", stiffness: 100, damping: 17 },
+                            r: { duration: 2.4, repeat: Infinity, ease: "easeInOut" },
+                            opacity: { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
                           }}
                           fill="none"
                           stroke={bubbleColor}
@@ -383,16 +384,17 @@ export default function InteractiveTalentChart({
                         />
                         {/* Inner tighter pulsing glow ring */}
                         <motion.circle
-                          cx={cx}
-                          cy={cy}
                           animate={{
+                            cx,
+                            cy,
                             r: [radius + 2, radius + 12, radius + 2],
                             opacity: [0.8, 0.2, 0.8]
                           }}
                           transition={{
-                            duration: 1.6,
-                            repeat: Infinity,
-                            ease: "easeInOut"
+                            cx: { type: "spring", stiffness: 100, damping: 17 },
+                            cy: { type: "spring", stiffness: 100, damping: 17 },
+                            r: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+                            opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
                           }}
                           fill="none"
                           stroke={bubbleColor}
@@ -404,10 +406,9 @@ export default function InteractiveTalentChart({
 
                     {/* Outer highlight circle on hover/selected */}
                     {(isHovered || isSelected) && (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={radius + 4}
+                      <motion.circle
+                        animate={{ cx, cy, r: radius + 4 }}
+                        transition={{ type: "spring", stiffness: 100, damping: 17 }}
                         fill="none"
                         stroke={bubbleColor}
                         strokeWidth={isSelected ? "2.5" : "1"}
@@ -418,35 +419,45 @@ export default function InteractiveTalentChart({
 
                     {/* Main solid bubble with micro-pulse when selected */}
                     <motion.circle
-                      cx={cx}
-                      cy={cy}
-                      r={radius}
-                      fill={bubbleColor}
-                      stroke={isSelected ? "#003135" : "white"}
-                      strokeWidth={isSelected ? 2 : 1}
                       animate={isSelected ? {
+                        cx,
+                        cy,
+                        r: radius,
                         scale: [1, 1.1, 1],
                         strokeWidth: [2, 3, 2]
-                      } : {}}
+                      } : {
+                        cx,
+                        cy,
+                        r: radius,
+                        scale: 1,
+                        strokeWidth: 1
+                      }}
+                      fill={bubbleColor}
+                      stroke={isSelected ? "#003135" : "white"}
+                      className="opacity-90 hover:opacity-100 transition-opacity duration-300"
                       transition={isSelected ? {
-                        type: "tween",
-                        ease: "easeInOut",
-                        duration: 1.6,
-                        repeat: Infinity,
-                      } : {}}
-                      className="transition-all duration-300 opacity-90 hover:opacity-100"
+                        cx: { type: "spring", stiffness: 100, damping: 17 },
+                        cy: { type: "spring", stiffness: 100, damping: 17 },
+                        r: { type: "spring", stiffness: 100, damping: 17 },
+                        scale: { type: "tween", ease: "easeInOut", duration: 1.6, repeat: Infinity },
+                        strokeWidth: { type: "tween", ease: "easeInOut", duration: 1.6, repeat: Infinity }
+                      } : {
+                        type: "spring",
+                        stiffness: 100,
+                        damping: 17
+                      }}
                     />
 
                     {/* Numeric inner rating display inside bubble if space allows */}
                     {radius >= (isSmall ? 8.5 : 11) && (
-                      <text
-                        x={cx}
-                        y={cy + 2.5}
+                      <motion.text
+                        animate={{ x: cx, y: cy + 2.5 }}
+                        transition={{ type: "spring", stiffness: 100, damping: 17 }}
                         textAnchor="middle"
                         className={`${isSmall ? "text-[6px]" : "text-[8px]"} font-mono font-extrabold fill-white`}
                       >
                         {cand.final_score}
-                      </text>
+                      </motion.text>
                     )}
                   </g>
                 );

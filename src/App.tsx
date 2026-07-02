@@ -31,7 +31,10 @@ import {
   Cpu,
   Activity,
   Maximize2,
-  Minimize2
+  Minimize2,
+  UploadCloud,
+  BarChart3,
+  ArrowRight
 } from "lucide-react";
 import { Candidate, Weights } from "./types";
 import DNAClusterView from "./components/DNAClusterView";
@@ -60,6 +63,7 @@ export default function App() {
   }, [candidates, ghostMode]);
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<'landing' | 'ingestion' | 'ranking' | 'analytics'>('landing');
   const [weights, setWeights] = useState<Weights>({
     techStack: 0.4,
     trajectory: 0.3,
@@ -661,33 +665,81 @@ useEffect(() => {
       </AnimatePresence>
 
       {/* Top Navigation Bar - Styled like clean Editions Bar */}
-      <nav id="navbar-main" className="border-b border-[#E5E2D9] px-6 py-4 flex flex-col sm:flex-row justify-between items-center bg-[#F4F3F7]/80 backdrop-blur sticky top-0 z-40 gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/20">
-            <div className="w-4 h-4 border-2 border-[#EDE8F5] rounded-md rotate-45" />
+      <nav id="navbar-main" className="border-b border-[#E5E2D9]/80 px-6 lg:px-10 py-3 lg:py-2.5 flex flex-col md:flex-row justify-between items-center bg-[#F4F3F7]/85 backdrop-blur-md sticky top-0 z-40 gap-4 transition-all duration-300">
+        <div className="flex items-center gap-3 cursor-pointer select-none group" onClick={() => setCurrentPage("landing")}>
+          <div className="w-9 h-9 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/15 group-hover:scale-105 transition-transform duration-300">
+            <Search className="w-4.5 h-4.5 text-[#EDE8F5] stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display font-extrabold text-sm tracking-tight uppercase text-[#1B244A]">
+              <span className="font-display font-black text-sm tracking-tight uppercase text-[#1B244A] group-hover:text-[#3D52A0] transition-colors duration-300">
                 HireLens
               </span>
             </div>
-            <p className="text-[10px] text-[#8697C4] font-sans tracking-wide">
+            <p className="text-[9px] text-[#8697C4] font-sans font-medium tracking-wide">
               Architectural Candidate Assessment & Alignment Hub
             </p>
           </div>
         </div>
 
-        {/* Navigation Center Links */}
-        <div className="hidden lg:flex items-center gap-6 text-xs font-medium text-[#8697C4]">
-          <InteractiveNavLink href="#bento-weights">Calibration Matrix</InteractiveNavLink>
-          <InteractiveNavLink href="#bento-jobspec">Job Spec Context</InteractiveNavLink>
-          <InteractiveNavLink href="#dna-cluster-root">DNA Signatures</InteractiveNavLink>
-          <InteractiveNavLink href="#leaderboard-table">Ranked Talents</InteractiveNavLink>
-          <span className="text-stone-300">|</span>
-          <span className="text-[10px] bg-[#3D52A0]/5 text-[#3D52A0] border border-[#3D52A0]/10 px-2 py-0.5 rounded font-mono font-bold">
-            FOUNDATIONS RELEASE ACTIVE
-          </span>
+        {/* Navigation Center Links - Modern Sliding Pill Selector */}
+        <div className="hidden lg:flex items-center gap-1 bg-stone-200/40 p-1 rounded-2xl border border-stone-200/60 text-xs font-medium">
+          {[
+            { id: "landing", label: "Portal Home" },
+            { id: "ingestion", label: "1. Resume Ingestion" },
+            { id: "ranking", label: "2. Calibration & Alignment" },
+            { id: "analytics", label: "3. Talent Analytics" }
+          ].map((tab) => {
+            const isActive = currentPage === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentPage(tab.id as any)}
+                className={`relative px-4 py-2 rounded-xl text-xs font-semibold font-sans transition-colors duration-300 cursor-pointer ${
+                  isActive ? "text-[#1B244A]" : "text-[#1B244A]/60 hover:text-[#1B244A]"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-tab-nav"
+                    className="absolute inset-0 bg-white shadow-xs border border-stone-200/50 rounded-xl -z-10"
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                  />
+                )}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Navigation Center Links - Mobile Scrollable Strip */}
+        <div className="flex lg:hidden items-center gap-1 bg-stone-200/30 p-1 rounded-xl border border-stone-200/40 text-xs font-medium overflow-x-auto max-w-full no-scrollbar">
+          {[
+            { id: "landing", label: "Home" },
+            { id: "ingestion", label: "1. Ingest" },
+            { id: "ranking", label: "2. Calibrate" },
+            { id: "analytics", label: "3. Analytics" }
+          ].map((tab) => {
+            const isActive = currentPage === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCurrentPage(tab.id as any)}
+                className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold font-sans whitespace-nowrap transition-colors duration-200 cursor-pointer ${
+                  isActive ? "text-[#1B244A]" : "text-[#1B244A]/50 hover:text-[#1B244A]"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="active-tab-nav-mobile"
+                    className="absolute inset-0 bg-white shadow-xs border border-stone-200/50 rounded-lg -z-10"
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                  />
+                )}
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Global Controls */}
@@ -695,15 +747,15 @@ useEffect(() => {
           <button
             id="reset-db-btn"
             onClick={resetDatabase}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200 border border-[#E5E2D9] active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-stone-600 bg-stone-100 hover:bg-stone-200/80 border border-[#E5E2D9] active:scale-95 hover:scale-102 hover:shadow-xs transition-all cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 text-stone-500" />
             Reset Seed
           </button>
           
           <div className="h-4 w-[1px] bg-stone-300" />
 
-          <div className="flex items-center gap-2 text-[10px] font-mono bg-[#024950]/5 border border-[#024950]/20 px-3 py-1.5 rounded-xl text-[#024950]">
+          <div className="flex items-center gap-2 text-[10px] font-mono bg-[#024950]/5 border border-[#024950]/15 px-3 py-1.5 rounded-xl text-[#024950] hover:bg-[#024950]/10 transition-colors">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             <span className="font-bold">{processedCandidates.length}</span> Active Profiles
           </div>
@@ -711,17 +763,22 @@ useEffect(() => {
       </nav>
 
       {/* Immersive Landing Header */}
-      <header className="relative w-full overflow-hidden bg-gradient-to-b from-[#EBF7F9]/40 via-[#F4F3F7] to-[#F4F3F7] border-b border-[#E5E2D9] pb-16 pt-8">
+      {currentPage === "landing" && (
+        <header className="relative w-full overflow-hidden bg-gradient-to-b from-[#EBF7F9]/40 via-[#F4F3F7] to-[#F4F3F7] border-b border-[#E5E2D9] pb-16 pt-8">
         <ScrollEngine3D />
         {/* Subtle decorative background lights */}
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#0FA4AF]/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[400px] h-[400px] bg-[#D0E4E7]/20 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
           {/* Top Info Tag */}
-          <div className="flex items-center gap-2 mb-6 animate-slide-in">
-            <span className="text-[10px] uppercase font-mono tracking-widest text-[#0FA4AF] font-bold">
-              HireLens-First Talent Ingestion & Calibration Release
+          <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full bg-[#0FA4AF]/10 border border-[#0FA4AF]/20 shadow-xs backdrop-blur-xs select-none">
+            <span className="flex h-1.5 w-1.5 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0FA4AF] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#024950]"></span>
+            </span>
+            <span className="text-[9px] uppercase font-mono tracking-widest text-[#024950] font-bold">
+              HireLens-First Talent Ingestion & Calibration Engine
             </span>
           </div>
 
@@ -759,7 +816,7 @@ useEffect(() => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
-                className="flex items-center gap-3"
+                className="flex flex-wrap items-center gap-3 mt-2 md:mt-0"
               >
                 <MagneticWrapper pullFactor={0.25}>
                   <a 
@@ -781,7 +838,7 @@ useEffect(() => {
                   </button>
                 </MagneticWrapper>
                 <MagneticWrapper pullFactor={0.25}>
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <button
                       id="hero-ghost-mode-toggle"
                       onClick={() => setGhostMode(!ghostMode)}
@@ -1178,12 +1235,13 @@ useEffect(() => {
 
         </div>
       </header>
+      )}
 
       {/* Anchor point to scroll down to */}
       <div id="dashboard-section" className="h-2" />
 
       {fallbackActive && (
-        <div id="failsafe-banner" className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs max-w-7xl lg:mx-auto w-[calc(100%-3rem)] md:w-full">
+        <div id="failsafe-banner" className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs max-w-[1440px] lg:mx-auto w-[calc(100%-3rem)] md:w-full">
           <div className="flex items-start gap-3">
             <div className="p-2 bg-amber-100 rounded-lg text-amber-700 mt-0.5 flex-shrink-0">
               <AlertTriangle className="w-4 h-4" />
@@ -1201,39 +1259,187 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Dashboard Main Bento Area */}
-      <main className="flex-grow p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Animated & Interactive KPI Dashboard Widgets */}
-        <div className="lg:col-span-12">
-          <KPIDashboardWidgets
-            candidates={processedCandidates}
-            loading={loadingCandidates || rankingInProgress}
-            onFilterStrongFits={setStrongFitsFiltered}
-            isStrongFitsFiltered={strongFitsFiltered}
-            onSelectCandidateId={setSelectedCandidateId}
-            selectedCandidateId={selectedCandidateId}
-            onClearSearch={() => {
-              setSearchQuery("");
-              setStrongFitsFiltered(false);
-            }}
-          />
-        </div>
+      {/* Interactive Module Portal Directory for Landing Page */}
+      {currentPage === "landing" && (
+        <section id="module-portal" className="max-w-[1440px] mx-auto px-6 lg:px-10 py-12 w-full animate-fade-in">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#024950] bg-[#024950]/5 px-3 py-1 rounded-full font-bold">
+              SYSTEM GATEWAY
+            </span>
+            <h2 className="font-display font-extrabold text-3xl text-[#1B244A] tracking-tight mt-3">
+              Module-Level Operations Dashboard
+            </h2>
+            <p className="text-stone-500 text-xs mt-2 leading-relaxed">
+              Unlock different capabilities of the multi-agent calibration platform. Select an active workspace module to initiate operations.
+            </p>
+          </div>
 
-        {/* Interactive Bubble Chart Map */}
-        <div className="lg:col-span-12 animate-slide-in">
-          <InteractiveTalentChart
-            candidates={processedCandidates}
-            selectedCandidateId={selectedCandidateId}
-            onSelectCandidate={(id) => setSelectedCandidateId(id)}
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* CARD 1: INGESTION LAB */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("ingestion");
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100 group-hover:bg-teal-600 group-hover:text-white group-hover:border-teal-500 transition-all">
+                  <UploadCloud className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Resume Ingestion Lab
+                    </h3>
+                    <span className="text-[9px] bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Parser Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Import resumes via automated drag-and-drop. Processes PDF files with local deterministic parsing fallback.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  {processedCandidates.length} profiles loaded
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+
+            {/* CARD 2: WEIGHT CALIBRATION */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("ranking");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-500 transition-all">
+                  <Sliders className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Weight Calibration
+                    </h3>
+                    <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Reranker Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Fine-tune importance ratios for Technical, Behavioral, and Domain matches. Calibrate & score candidates instantly.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  3 dynamic metrics
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+
+            {/* CARD 3: TALENT ANALYTICS */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                setCurrentPage("analytics");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="p-8 rounded-3xl bg-white border border-[#E5E2D9] hover:border-[#024950]/40 hover:shadow-lg transition-all cursor-pointer group flex flex-col justify-between h-[320px]"
+            >
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-all">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-extrabold text-lg text-stone-900 group-hover:text-[#024950] transition-colors">
+                      Talent Analytics
+                    </h3>
+                    <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                      Diagnostic Active
+                    </span>
+                  </div>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    Access high-fidelity charts, alignment distributions, and comparison matrices. Export reports directly to PDF.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E2D9]/60">
+                <span className="text-[10px] font-mono text-stone-400">
+                  Interactive radar, metrics & bubble maps
+                </span>
+                <span className="flex items-center gap-1 text-[#024950] text-xs font-mono font-bold group-hover:translate-x-1 transition-transform">
+                  Enter Workspace
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Dashboard Main Bento Area */}
+      {currentPage !== "landing" && (
+        <main className="flex-grow p-6 lg:p-10 max-w-[1440px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Animated & Interactive KPI Dashboard Widgets */}
+          {currentPage === "analytics" && (
+            <div className="lg:col-span-12">
+              <KPIDashboardWidgets
+                candidates={processedCandidates}
+                loading={loadingCandidates || rankingInProgress}
+                onFilterStrongFits={setStrongFitsFiltered}
+                isStrongFitsFiltered={strongFitsFiltered}
+                onSelectCandidateId={setSelectedCandidateId}
+                selectedCandidateId={selectedCandidateId}
+                onClearSearch={() => {
+                  setSearchQuery("");
+                  setStrongFitsFiltered(false);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Interactive Bubble Chart Map */}
+          {currentPage === "analytics" && (
+            <div className="lg:col-span-12 animate-slide-in">
+              <InteractiveTalentChart
+                candidates={processedCandidates}
+                selectedCandidateId={selectedCandidateId}
+                onSelectCandidate={(id) => setSelectedCandidateId(id)}
+              />
+            </div>
+          )}
 
         {/* LEFT COLUMN (Width: 5/12) — Ingestion, Job Spec, Weight sliders */}
-        <section className="lg:col-span-5 space-y-5 flex flex-col">
+        {currentPage !== "analytics" && (
+          <section className="lg:col-span-5 space-y-5 flex flex-col">
           
           {/* BENTO CARD 1: Weight Calibration sliders */}
-          <div id="bento-weights" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative overflow-hidden">
+          {currentPage === "ranking" && (
+            <>
+              <div id="bento-weights" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-[#024950]/5 rounded-full blur-2xl pointer-events-none" />
             
             <div className="mb-4">
@@ -1421,22 +1627,28 @@ useEffect(() => {
               </div>
             )}
           </div>
+        </>
+      )}
 
           {/* BENTO CARD 3: Ingestion Lab Form */}
-          <div id="bento-ingest" className="flex-grow">
-            <CandidateIngestionForm onIngestSuccess={handleNewCandidateIngested} />
-          </div>
+          {currentPage === "ingestion" && (
+            <div id="bento-ingest" className="flex-grow">
+              <CandidateIngestionForm onIngestSuccess={handleNewCandidateIngested} />
+            </div>
+          )}
 
         </section>
+      )}
 
-        {/* RIGHT COLUMN (Width: 7/12) — Leaderboard and Detailed selected card */}
-        <section className="lg:col-span-7 space-y-5 flex flex-col">
+        {/* RIGHT COLUMN — Leaderboard and Detailed selected card */}
+        <section className={`${currentPage === "analytics" ? "lg:col-span-12" : "lg:col-span-7"} space-y-5 flex flex-col`}>
           
           {/* BENTO CARD 4: Live Leaderboard standings */}
-          <div 
-            id="bento-leaderboard" 
-            className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative"
-          >
+          {currentPage === "ranking" && (
+            <div 
+              id="bento-leaderboard" 
+              className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex flex-col justify-between relative"
+            >
             <div className="w-full flex flex-col h-full justify-between">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
                 <div>
@@ -1620,9 +1832,26 @@ useEffect(() => {
             </AnimatePresence>
 
             {loadingCandidates ? (
-              <div className="py-20 flex flex-col items-center justify-center gap-3">
-                <RefreshCw className="w-8 h-8 text-[#3D52A0] animate-spin" />
-                <p className="text-xs font-mono text-stone-500">Retrieving system index...</p>
+              <div className="space-y-3 p-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="p-4 rounded-2xl border border-stone-150 bg-white/60 animate-pulse flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-full bg-stone-200" />
+                      <div className="space-y-2">
+                        <div className="w-32 h-3.5 bg-stone-200 rounded-md" />
+                        <div className="w-20 h-2.5 bg-stone-150 rounded-md" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-5 bg-stone-200 rounded-full" />
+                      <div className="w-4 h-4 bg-stone-150 rounded" />
+                    </div>
+                  </div>
+                ))}
+                <div className="py-4 text-center text-xs font-mono text-stone-400 flex items-center justify-center gap-2 bg-[#FDFCF8]/30 border border-stone-100 rounded-xl">
+                  <RefreshCw className="w-3 h-3 text-[#3D52A0] animate-spin" />
+                  <span>Retrieving system index and aligning vectors...</span>
+                </div>
               </div>
             ) : (
               <>
@@ -1825,7 +2054,29 @@ useEffect(() => {
                 </div>
 
                 {/* Desktop & Tablet Table with Horizontal Scrolling wrapper */}
-                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm max-h-[62vh]">
+                <div className="hidden md:block overflow-x-hidden overflow-y-auto rounded-2xl border border-stone-200/90 bg-[#FDFCF8]/30 p-2 shadow-sm max-h-[62vh] relative">
+                  <AnimatePresence>
+                    {rankingInProgress && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-[#FDFCF8]/65 backdrop-blur-xs flex flex-col items-center justify-center z-10 gap-4"
+                      >
+                        <div className="p-5 bg-white rounded-3xl shadow-xl border border-[#E5E2D9] flex flex-col items-center gap-3 max-w-sm text-center">
+                          <div className="relative flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full border-2 border-indigo-100 border-t-[#3D52A0] animate-spin" />
+                            <Sparkles className="w-4 h-4 text-indigo-500 absolute animate-pulse" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold font-display text-[#1B244A] uppercase tracking-wider">Calibration in Progress</h4>
+                            <p className="text-[10px] font-mono text-stone-500 mt-1 h-8 flex items-center justify-center leading-normal">{rankingStep}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <table className="w-full text-left border-collapse table-auto bg-white rounded-xl overflow-hidden border border-stone-150/60">
                     <thead className="bg-stone-50/80">
                       <tr className="text-stone-500 text-[10px] font-mono uppercase tracking-wider border-b border-[#E5E2D9]">
@@ -2173,9 +2424,54 @@ useEffect(() => {
             )}
             </div>
           </div>
+          )}
+
+          {currentPage === "ingestion" && (
+            <div className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-stone-400">Sandbox Database</span>
+                  <h3 className="font-display font-extrabold text-[#1B244A] text-base mt-0.5">Ingested Profiles Pool</h3>
+                </div>
+                <span className="text-xs px-2.5 py-1 bg-[#3D52A0]/10 text-[#3D52A0] rounded-xl font-mono font-bold">
+                  {processedCandidates.length} Active Profiles
+                </span>
+              </div>
+              
+              <div className="divide-y divide-stone-100 overflow-y-auto max-h-[500px]">
+                {processedCandidates.length === 0 ? (
+                  <div className="py-16 text-center text-stone-400 text-xs italic">
+                    No candidate profiles in the database. Use the drag-and-drop ingestion lab to add resumes!
+                  </div>
+                ) : (
+                  processedCandidates.map((cand, idx) => (
+                    <div key={cand.id} className="py-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-stone-50/50 p-2 rounded-xl transition-all">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display font-bold text-sm text-[#1B244A]">{cand.anonymized_profile.display_identifier}</h4>
+                          <span className="text-[8px] bg-stone-100 text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded font-mono">
+                            Index {idx + 1}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 mt-1 leading-relaxed line-clamp-2 max-w-md">{cand.anonymized_profile.summary}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {cand.ghost_competencies?.slice(0, 2).map((gc: any, gidx: number) => (
+                          <span key={gidx} className="text-[9px] bg-[#024950]/5 text-[#024950] border border-[#024950]/10 px-2 py-0.5 rounded font-mono font-bold">
+                            {gc.concept}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {/* BENTO CARD 5: Selected Candidate Deep-Dive Verification Matrix */}
-          <div id="bento-deepdive" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex-grow">
+          {currentPage !== "ingestion" && (
+            <div id="bento-deepdive" className="p-6 rounded-3xl bg-white border border-[#E5E2D9] shadow-sm flex-grow">
             {compareCandidateIds.length >= 2 ? (
               (() => {
                 const compCandidates = compareCandidateIds
@@ -2383,7 +2679,14 @@ useEffect(() => {
             ) : (
               // STANDARD SINGLE CANDIDATE DEEP DIVE
               selectedCandidate ? (
-                <div id="alignment-matrix-panel" className="space-y-6">
+                <motion.div
+                  key={selectedCandidate.id}
+                  id="alignment-matrix-panel"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="space-y-6"
+                >
                   
                   {/* Inform user they can compare */}
                   {compareCandidateIds.length === 1 && (
@@ -2549,7 +2852,7 @@ useEffect(() => {
                     <DNAClusterView candidate={selectedCandidate} />
                   </div>
 
-                </div>
+                </motion.div>
               ) : (
                 <div className="py-20 flex flex-col items-center justify-center text-center text-stone-400 gap-2">
                   <User className="w-8 h-8 opacity-60" />
@@ -2558,6 +2861,7 @@ useEffect(() => {
               )
             )}
           </div>
+          )}
 
         </section>
 
@@ -2578,41 +2882,102 @@ useEffect(() => {
         </div>
 
       </main>
+      )}
 
       {/* Footer System Architecture Info */}
-      <footer className="border-t border-[#E5E2D9] py-8 px-6 bg-stone-50 text-center text-xs text-stone-500 font-mono mt-10" id="app-footer">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 bg-[#3D52A0] rounded-full" />
-            <span>Operational System Topology: Node 'HireLens' Online</span>
-          </div>
-          
-          {/* Privacy Policy & Terms Links */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-stone-600">
-            <button
-              id="footer-privacy-link"
-              onClick={() => setShowPrivacyModal(true)}
-              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
-            >
-              Privacy Policy
-            </button>
-            <span className="text-stone-300">|</span>
-            <button
-              id="footer-terms-link"
-              onClick={() => setShowTermsModal(true)}
-              className="hover:text-[#3D52A0] transition-colors font-semibold cursor-pointer py-1 px-2 hover:bg-[#3D52A0]/5 rounded-lg"
-            >
-              Terms of Service
-            </button>
+      <footer className="border-t border-[#E5E2D9] pt-12 pb-10 px-6 bg-gradient-to-b from-[#F4F3F7]/50 to-[#EAE8F0] mt-16 text-xs text-stone-500 font-sans" id="app-footer">
+        <div className="max-w-[1440px] mx-auto">
+          {/* Main Footer Layout Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-[#E5E2D9]/60">
+            
+            {/* Branding & Vision Column */}
+            <div className="md:col-span-5 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-[#3D52A0] rounded-xl flex items-center justify-center shadow-md shadow-blue-950/10">
+                  <Search className="w-4 h-4 text-[#EDE8F5]" />
+                </div>
+                <div>
+                  <span className="font-display font-black text-sm tracking-tight uppercase text-[#1B244A]">
+                    HireLens
+                  </span>
+                  <p className="text-[10px] text-[#8697C4] font-medium tracking-wide">
+                    Consensus Alignment Engine
+                  </p>
+                </div>
+              </div>
+              
+              <p className="text-stone-600/90 text-[11px] leading-relaxed max-w-sm">
+                Next-generation collaborative consensus platform for multi-axis candidate capability alignment, cognitive profile mapping, and automated talent telemetry.
+              </p>
+
+              {/* Real-time Status Pill */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#024950]/5 border border-[#024950]/15 rounded-lg text-[10px] font-mono text-[#024950] font-medium">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span>Core Node Status: Operational System Online</span>
+              </div>
+            </div>
+
+            {/* Platform Controls & Policies Column */}
+            <div className="md:col-span-3 space-y-3">
+              <h4 className="text-[10px] uppercase font-mono tracking-wider text-stone-500 font-bold">Compliance & Safety</h4>
+              <ul className="space-y-2 text-[11px] font-medium">
+                <li>
+                  <button
+                    id="footer-privacy-link"
+                    onClick={() => setShowPrivacyModal(true)}
+                    className="flex items-center gap-2 text-stone-600 hover:text-[#3D52A0] transition-colors cursor-pointer py-1 text-left w-full group"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#0FA4AF] group-hover:scale-110 transition-transform" />
+                    <span>Candidate Privacy Policy</span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    id="footer-terms-link"
+                    onClick={() => setShowTermsModal(true)}
+                    className="flex items-center gap-2 text-stone-600 hover:text-[#3D52A0] transition-colors cursor-pointer py-1 text-left w-full group"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#0FA4AF] group-hover:scale-110 transition-transform" />
+                    <span>Terms of System Telemetry</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Neural Matrix & Agents Config Column */}
+            <div className="md:col-span-4 space-y-3">
+              <h4 className="text-[10px] uppercase font-mono tracking-wider text-stone-500 font-bold">Consensus Agents Configuration</h4>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-white/60 border border-stone-200/50 text-[10px] font-mono">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#3D52A0] rounded-full" />
+                    <span className="text-stone-700 font-bold">Panel Coordinator</span>
+                  </div>
+                  <span className="text-[#8697C4]">gemini-3.5-flash</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-lg bg-white/60 border border-stone-200/50 text-[10px] font-mono">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-[#0FA4AF] rounded-full" />
+                    <span className="text-stone-700 font-bold">Evaluators Consensus</span>
+                  </div>
+                  <span className="text-[#8697C4]">Unified 3.5 Model Stack</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <div className="flex items-center gap-4">
-            <span>Agent 1: gemini-2.5-flash</span>
-            <div className="w-1.5 h-1.5 bg-stone-400 rounded-full" />
-            <span>Agent 2: gemini-2.5-flash</span>
-          </div>
-          <div>
-            <span>© 2026 HireLens. All rights reserved.</span>
+          {/* Sub Footer Row */}
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono text-stone-400">
+            <div>
+              <span>© 2026 HireLens. Precision Orchestrated Assessments. All rights reserved.</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <span>Optimized with</span>
+              <Heart className="w-3 h-3 text-rose-500 animate-pulse fill-rose-500" />
+              <span>for Enterprise Talent Operations</span>
+            </div>
           </div>
         </div>
       </footer>
